@@ -7,9 +7,11 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer'); // Gestor de subida de archivos
 
 // ⚙️ CONSTANTE OPERACIONAL DEL MOTOR DE HORARIOS
+// Define el tiempo de holgura obligatorio entre funciones para la limpieza de la sala
 const MINUTOS_LIMPIEZA = 20; 
 
 // 🔒 MIDDLEWARE DE SEGURIDAD CORREGIDO
+// Bloquea o permite el paso a rutas administrativas validando el rol en la sesión activa
 function verificarAdmin(req, res, next) {
     if (req.session && req.session.rol === 'admin') {
         return next(); // ¡Autorizado! Continúa
@@ -25,6 +27,7 @@ function verificarAdmin(req, res, next) {
 }
 
 // ⚙️ CONFIGURACIÓN DE ALMACENAMIENTO DE PORTADAS (MULTER)
+// Define la carpeta de destino y renombra los archivos subidos para evitar duplicados usando timestamps
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, path.join(__dirname, 'public')); 
@@ -37,11 +40,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // 1. CONFIGURACIONES GENERALES DE EXPRESS
+// Middleware para servir archivos estáticos y procesar datos entrantes en formato URL-encoded y JSON
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Configuración de la sesión en memoria
+// Configuración de la sesión en memoria para persistencia local de usuarios
 app.use(session({
     secret: 'ClaveSecretaDelCineCentral',
     resave: false,
@@ -50,6 +54,7 @@ app.use(session({
 }));
 
 // 2. RUTAS DE NAVEGACIÓN VISUAL (GET CLEAN URLS)
+// Despacho de archivos HTML estáticos para la interfaz de usuario
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
@@ -86,6 +91,7 @@ app.get('/contacto', (req, res) => {
 // 3. RUTAS DE AUTENTICACIÓN (POST)
 
 // LOGUEAR USUARIO
+// Busca coincidencia directa de correo y contraseña para iniciar la sesión guardando los datos del usuario en la 'session'
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
@@ -110,6 +116,7 @@ app.post('/login', (req, res) => {
 });
 
 // REGISTRAR USUARIO (MÉTODO DIRECTO REVERTIDO)
+// Verifica duplicados de correo, registra el nuevo usuario en texto plano con rol 'cliente' e inicia sesión automáticamente
 app.post('/register', async (req, res) => {
     const { nombre, email, password } = req.body;
 
@@ -126,7 +133,7 @@ app.post('/register', async (req, res) => {
             }
 
             // Guardar directamente al usuario en la BD con rol por defecto 'cliente'
-            const queryInsert = 'INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)';
+            const queryInsert = 'INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?, ?)';
             conexion.query(queryInsert, [nombre, email, password, 'cliente'], (errInsert, result) => {
                 if (errInsert) {
                     console.error("❌ Error al guardar usuario:", errInsert);
@@ -149,6 +156,10 @@ app.post('/register', async (req, res) => {
 
 
 // 4. MÓDULO DE ADMINISTRACIÓN
+
+// AGREGAR PELÍCULA Y GENERAR FUNCIONES AUTOMÁTICAS
+// Registra la película en la base de datos y, si su estado es 'cartelera', calcula de forma automática e inserta 
+// en bucle todas las funciones posibles que quepan en la sala considerando su hora de apertura, cierre y tiempo de limpieza.
 app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada'), (req, res) => {
     if (!req.file) return res.status(400).send('Debes seleccionar una imagen.');
 
@@ -181,6 +192,7 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
                 return res.status(500).send('Error al obtener los datos de la sala.');
             }
 
+            // Conversión de horarios (HH:MM) de la sala a minutos totales para el algoritmo de cálculo de franjas
             const { hora_apertura, hora_cierre } = salas[0];
             const [aprH, aprM] = hora_apertura.split(':').map(Number);
             const [cieH, cieM] = hora_cierre.split(':').map(Number);
@@ -189,25 +201,27 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
             const minutesCierre = cieH * 60 + cieM;
             const funcionesACrear = [];
 
+            // Bucle del motor de horarios: calcula bloques de "Inicio - Fin - Limpieza" recurrentemente
             while (minutosActuales + minutosDuracion <= minutesCierre) {
                 const minutosFinPelicula = minutosActuales + minutosDuracion;
                 const hInicio = String(Math.floor(minutosActuales / 60)).padStart(2, '0') + ':' + String(minutosActuales % 60).padStart(2, '0') + ':00';
                 const hFin = String(Math.floor(minutosFinPelicula / 60)).padStart(2, '0') + ':' + String(minutosFinPelicula % 60).padStart(2, '0') + ':00';
 
                 funcionesACrear.push([peliculaId, parseInt(sala_id), hInicio, hFin]);
-                minutosActuales = minutosFinPelicula + MINUTOS_LIMPIEZA;
+                minutosActuales = minutosFinPelicula + MINUTOS_LIMPIEZA; // Añade el tiempo muerto para limpieza
             }
 
             if (funcionesACrear.length === 0) {
                 return res.send('<h3>La película no cabe en el horario de la sala.</h3>');
             }
 
+            // Inserción masiva indexada de todas las funciones generadas
             const queryFunciones = 'INSERT INTO funciones (pelicula_id, sala_id, hora_inicio, hora_fin) VALUES ?';
             conexion.query(queryFunciones, [funcionesACrear], (errFunciones) => {
                 if (errFunciones) return res.status(500).send('Error al generar las funciones automáticas');
                 
                 res.send(`
-                    <div style="text-align: center; font-family: sans-serif; margin-top: 50px; color: white; background: #141414; padding:20px;">
+                    <div style="text-align: center; font-family: sans-serif; margin-top: 50px; color: white; background: #141414; padding: 20px;">
                         <h1 style="color: #4CAF50;">¡Película y Funciones creadas! 🎬</h1>
                         <p>Se calcularon automáticamente ${funcionesACrear.length} funciones.</p>
                         <a href="/admin" style="color: #e50914; font-weight: bold; text-decoration: none;">Volver al panel</a>
@@ -216,22 +230,24 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
             });
         });
     });
-
-
 });
 
 // API POST CAMBIAR ESTADO
+// Modifica el estado de una película ('almacen', 'estreno', 'cartelera'). Si pasa a cartelera, limpia funciones viejas 
+// y recalcula el árbol de horarios en la nueva sala asignada.
 app.post('/api/admin/cambiar-estado', verificarAdmin, (req, res) => {
     const { pelicula_id, nuevo_estado, sala_id } = req.body;
 
     conexion.query('UPDATE peliculas SET estado = ? WHERE id = ?', [nuevo_estado, pelicula_id], (err) => {
         if (err) return res.status(500).send('Error al actualizar estado.');
 
+        // Si se remueve de la cartelera activa, se limpian sus funciones asociadas por cascada lógica
         if (nuevo_estado === 'almacen' || nuevo_estado === 'estreno') {
             conexion.query('DELETE FROM funciones WHERE pelicula_id = ?', [pelicula_id], () => {
                 return res.redirect('/admin');
             });
         } 
+        // Si vuelve a cartelera, recalcula las funciones de la sala asignada
         else if (nuevo_estado === 'cartelera' && sala_id) {
             conexion.query('DELETE FROM funciones WHERE pelicula_id = ?', [pelicula_id], () => {
                 conexion.query('SELECT duracion FROM peliculas WHERE id = ?', [pelicula_id], (err, pRes) => {
@@ -281,6 +297,7 @@ app.get('/api/admin/todas-las-peliculas', verificarAdmin, (req, res) => {
 
 
 //  AGREGAR COMBO
+// Registra un nuevo combo de comida/bebida con carga de imagen multimedia mediante Multer
 app.post('/api/admin/agregar-combo', verificarAdmin, upload.single('imagenCombo'), (req, res) => {
     if (!req.file) return res.status(400).send('Debes seleccionar una imagen para el combo.');
 
@@ -310,6 +327,7 @@ app.post('/api/admin/agregar-combo', verificarAdmin, upload.single('imagenCombo'
 });
 
 // 🗑️ 2. NUEVA RUTA POST: ELIMINAR COMBO (ADMIN)
+// Elimina físicamente un combo del stock por su identificador primario
 app.post('/api/admin/eliminar-combo', verificarAdmin, (req, res) => {
     const { combo_id } = req.body;
 
@@ -334,6 +352,7 @@ app.get('/api/combos', (req, res) => {
 });
 
 // 5. APIS PÚBLICAS Y AUXILIARES
+
 app.get('/api/salas', (req, res) => {
     conexion.query('SELECT id, nombre FROM salas', (err, results) => {
         if (err) return res.status(500).json({ error: 'Error al traer salas' });
@@ -341,6 +360,7 @@ app.get('/api/salas', (req, res) => {
     });
 });
 
+// Devuelve el estado actual de la sesión para renderizado dinámico en el Frontend (Navbar/Permisos)
 app.get('/api/usuario-actual', (req, res) => {
     if (req.session && req.session.nombre) {
         res.json({
@@ -353,10 +373,14 @@ app.get('/api/usuario-actual', (req, res) => {
     }
 });
 
+// Destruye por completo la sesión en el servidor y redirige al index principal
 app.get('/logout', (req, res) => {
     req.session.destroy(() => { res.redirect('/'); });
 });
 
+// API DE CARTELERA CON MAPEO ESTRUCTURAL JSON
+// Ejecuta un LEFT JOIN para unificar películas con sus funciones mapeadas en cartelera.
+// Transforma las filas planas de SQL en un objeto anidado estructurado de películas donde cada una contiene su array de funciones.
 app.get('/api/cartelera', (req, res) => {
     const query = `
         SELECT p.id AS pelicula_id, p.titulo, p.duracion, p.genero, p.portada, p.sinopsis,
@@ -371,18 +395,21 @@ app.get('/api/cartelera', (req, res) => {
 
         const peliculasMap = {};
         rows.forEach(row => {
+            // Si la película no ha sido agregada al mapa, inicializa su estructura base
             if (!peliculasMap[row.pelicula_id]) {
                 peliculasMap[row.pelicula_id] = {
                     id: row.pelicula_id, titulo: row.titulo, duracion: row.duracion,
                     genero: row.genero, portada: row.portada, sinopsis: row.sinopsis, funciones: []
                 };
             }
+            // Agrega la función vinculada al array de esa película si existe
             if (row.funcion_id) {
                 peliculasMap[row.pelicula_id].funciones.push({
                     id: row.funcion_id, hora_inicio: row.hora_inicio, hora_fin: row.hora_fin, sala_id: row.sala_id
                 });
             }
         });
+        // Retorna las propiedades transformadas en un array limpio de objetos JSON
         res.json(Object.values(peliculasMap));
     });
 });

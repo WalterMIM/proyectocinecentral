@@ -73,7 +73,7 @@
         const contenedor = document.getElementById("contenedor-estrenos");
         const contenedorAdmin = document.getElementById("contenedor-admin-ops");
 
-        // 1. Mostrar botón si es Admin
+        // Mostrar botón si es Admin
         try {
             const resUser = await fetch('/api/usuario-actual');
             const user = await resUser.json();
@@ -82,7 +82,7 @@
             }
         } catch (e) { console.error(e); }
 
-        // 2. Cargar los estrenos de la Base de Datos
+        // Cargar los estrenos de la Base de Datos
         try {
             const res = await fetch('/api/estrenos');
             const estrenos = await res.json();
