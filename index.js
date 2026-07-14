@@ -121,10 +121,11 @@ app.post('/register', async (req, res) => {
     const { nombre, email, password } = req.body;
 
     try {
+        // 1. Verificar si el correo ya existe
         const queryCheck = 'SELECT id FROM usuarios WHERE email = ?';
         conexion.query(queryCheck, [email], async (err, results) => {
             if (err) {
-                console.error("❌ Error en base de datos:", err);
+                console.error("❌ Error en base de datos al verificar:", err);
                 return res.status(500).send('Error al procesar el registro');
             }
 
@@ -132,22 +133,32 @@ app.post('/register', async (req, res) => {
                 return res.send('<h3>El correo electrónico ya está registrado.</h3><a href="/register">Volver a intentar</a>');
             }
 
-            // Guardar directamente al usuario en la BD con rol por defecto 'cliente'
-            const queryInsert = 'INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?, ?)';
-            conexion.query(queryInsert, [nombre, email, password, 'cliente'], (errInsert, result) => {
-                if (errInsert) {
-                    console.error("❌ Error al guardar usuario:", errInsert);
-                    return res.status(500).send('Error al guardar el usuario.');
-                }
-                
-                // Iniciar sesión de inmediato de forma automática
-                req.session.usuarioId = result.insertId;
-                req.session.nombre = nombre;
-                req.session.rol = 'cliente';
+            try {
+                // 2. Encriptar la contraseña antes de guardarla (Recomendado ya que usas bcrypt)
+                const salt = await bcrypt.genSalt(10);
+                const passwordHash = await bcrypt.hash(password, salt);
 
-                // Redireccionar directamente al Home
-                res.redirect('/'); 
-            });
+                // 3. Insertar en la BD (Corregido: 4 columnas = 4 signos de interrogación)
+                const queryInsert = 'INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)';
+                
+                conexion.query(queryInsert, [nombre, email, passwordHash, 'cliente'], (errInsert, result) => {
+                    if (errInsert) {
+                        console.error("❌ Error al guardar usuario:", errInsert);
+                        return res.status(500).send('Error al guardar el usuario.');
+                    }
+                    
+                    // 4. Iniciar sesión automáticamente
+                    req.session.usuarioId = result.insertId;
+                    req.session.nombre = nombre;
+                    req.session.rol = 'cliente';
+
+                    // Redireccionar directamente al Home
+                    res.redirect('/'); 
+                });
+            } catch (hashError) {
+                console.error("❌ Error al encriptar contraseña:", hashError);
+                return res.status(500).send('Error interno de seguridad.');
+            }
         });
     } catch (error) {
         res.status(500).send('Hubo un error al procesar tu registro.');
