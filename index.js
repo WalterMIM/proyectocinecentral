@@ -88,11 +88,15 @@ app.get('/contacto', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'Contacto.html'));
 });
 
+// Ruta explícita para la vista "Mis Compras" guardada en la carpeta views
+app.get('/mis-compras.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'mis-compras.html'));
+});
+
 
 // 3. RUTAS DE AUTENTICACIÓN (POST)
 
 // LOGUEAR USUARIO
-// Busca coincidencia directa de correo y contraseña para iniciar la sesión guardando los datos del usuario en la 'session'
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
@@ -116,13 +120,11 @@ app.post('/login', (req, res) => {
     });
 });
 
-// REGISTRAR USUARIO (MÉTODO DIRECTO REVERTIDO)
-// Verifica duplicados de correo, registra el nuevo usuario en texto plano con rol 'cliente' e inicia sesión automáticamente
+// REGISTRAR USUARIO
 app.post('/register', async (req, res) => {
     const { nombre, email, password } = req.body;
 
     try {
-        // 1. Verificar si el correo ya existe
         const queryCheck = 'SELECT id FROM usuarios WHERE email = ?';
         conexion.query(queryCheck, [email], async (err, results) => {
             if (err) {
@@ -135,11 +137,9 @@ app.post('/register', async (req, res) => {
             }
 
             try {
-                // 2. Encriptar la contraseña antes de guardarla (Recomendado ya que usas bcrypt)
                 const salt = await bcrypt.genSalt(10);
                 const passwordHash = await bcrypt.hash(password, salt);
 
-                // 3. Insertar en la BD (Corregido: 4 columnas = 4 signos de interrogación)
                 const queryInsert = 'INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)';
                 
                 conexion.query(queryInsert, [nombre, email, passwordHash, 'cliente'], (errInsert, result) => {
@@ -148,12 +148,10 @@ app.post('/register', async (req, res) => {
                         return res.status(500).send('Error al guardar el usuario.');
                     }
                     
-                    // 4. Iniciar sesión automáticamente
                     req.session.usuarioId = result.insertId;
                     req.session.nombre = nombre;
                     req.session.rol = 'cliente';
 
-                    // Redireccionar directamente al Home
                     res.redirect('/'); 
                 });
             } catch (hashError) {
@@ -169,9 +167,6 @@ app.post('/register', async (req, res) => {
 
 // 4. MÓDULO DE ADMINISTRACIÓN
 
-// AGREGAR PELÍCULA Y GENERAR FUNCIONES AUTOMÁTICAS
-// Registra la película en la base de datos y, si su estado es 'cartelera', calcula de forma automática e inserta 
-// en bucle todas las funciones posibles que quepan en la sala considerando su hora de apertura, cierre y tiempo de limpieza.
 app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada'), (req, res) => {
     if (!req.file) return res.status(400).send('Debes seleccionar una imagen.');
 
@@ -204,7 +199,6 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
                 return res.status(500).send('Error al obtener los datos de la sala.');
             }
 
-            // Conversión de horarios (HH:MM) de la sala a minutos totales para el algoritmo de cálculo de franjas
             const { hora_apertura, hora_cierre } = salas[0];
             const [aprH, aprM] = hora_apertura.split(':').map(Number);
             const [cieH, cieM] = hora_cierre.split(':').map(Number);
@@ -213,21 +207,19 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
             const minutesCierre = cieH * 60 + cieM;
             const funcionesACrear = [];
 
-            // Bucle del motor de horarios: calcula bloques de "Inicio - Fin - Limpieza" recurrentemente
             while (minutosActuales + minutosDuracion <= minutesCierre) {
                 const minutosFinPelicula = minutosActuales + minutosDuracion;
                 const hInicio = String(Math.floor(minutosActuales / 60)).padStart(2, '0') + ':' + String(minutosActuales % 60).padStart(2, '0') + ':00';
                 const hFin = String(Math.floor(minutosFinPelicula / 60)).padStart(2, '0') + ':' + String(minutosFinPelicula % 60).padStart(2, '0') + ':00';
 
                 funcionesACrear.push([peliculaId, parseInt(sala_id), hInicio, hFin]);
-                minutosActuales = minutosFinPelicula + MINUTOS_LIMPIEZA; // Añade el tiempo muerto para limpieza
+                minutosActuales = minutosFinPelicula + MINUTOS_LIMPIEZA;
             }
 
             if (funcionesACrear.length === 0) {
                 return res.send('<h3>La película no cabe en el horario de la sala.</h3>');
             }
 
-            // Inserción masiva indexada de todas las funciones generadas
             const queryFunciones = 'INSERT INTO funciones (pelicula_id, sala_id, hora_inicio, hora_fin) VALUES ?';
             conexion.query(queryFunciones, [funcionesACrear], (errFunciones) => {
                 if (errFunciones) return res.status(500).send('Error al generar las funciones automáticas');
@@ -244,22 +236,17 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
     });
 });
 
-// API POST CAMBIAR ESTADO
-// Modifica el estado de una película ('almacen', 'estreno', 'cartelera'). Si pasa a cartelera, limpia funciones viejas 
-// y recalcula el árbol de horarios en la nueva sala asignada.
 app.post('/api/admin/cambiar-estado', verificarAdmin, (req, res) => {
     const { pelicula_id, nuevo_estado, sala_id } = req.body;
 
     conexion.query('UPDATE peliculas SET estado = ? WHERE id = ?', [nuevo_estado, pelicula_id], (err) => {
         if (err) return res.status(500).send('Error al actualizar estado.');
 
-        // Si se remueve de la cartelera activa, se limpian sus funciones asociadas por cascada lógica
         if (nuevo_estado === 'almacen' || nuevo_estado === 'estreno') {
             conexion.query('DELETE FROM funciones WHERE pelicula_id = ?', [pelicula_id], () => {
                 return res.redirect('/admin');
             });
         } 
-        // Si vuelve a cartelera, recalcula las funciones de la sala asignada
         else if (nuevo_estado === 'cartelera' && sala_id) {
             conexion.query('DELETE FROM funciones WHERE pelicula_id = ?', [pelicula_id], () => {
                 conexion.query('SELECT duracion FROM peliculas WHERE id = ?', [pelicula_id], (err, pRes) => {
@@ -299,7 +286,6 @@ app.post('/api/admin/cambiar-estado', verificarAdmin, (req, res) => {
     });
 });
 
-// API para listar las películas en el panel inferior
 app.get('/api/admin/todas-las-peliculas', verificarAdmin, (req, res) => {
     conexion.query('SELECT id, titulo, estado FROM peliculas ORDER BY id DESC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -307,20 +293,13 @@ app.get('/api/admin/todas-las-peliculas', verificarAdmin, (req, res) => {
     });
 });
 
-
-//  AGREGAR COMBO
-// Registra un nuevo combo de comida/bebida con carga de imagen multimedia mediante Multer
 app.post('/api/admin/agregar-combo', verificarAdmin, upload.single('imagenCombo'), (req, res) => {
     if (!req.file) return res.status(400).send('Debes seleccionar una imagen para el combo.');
 
-    // 1. Extraemos los datos después de que Multer procesó el formulario
     const { nombre, precio, descripcion } = req.body;
-    
-    // 2. Forzamos la conversión a entero. Si por alguna razón llega undefined, ponemos 0
     const stock = req.body.stock ? parseInt(req.body.stock, 10) : 0; 
     const imagenURL = '/' + req.file.filename;
 
-    // 3. Insertar en la Base de Datos
     const query = 'INSERT INTO combos (nombre, descripcion, precio, imagen, stock) VALUES (?, ?, ?, ?, ?)';
     conexion.query(query, [nombre, descripcion, parseFloat(precio), imagenURL, stock], (err, result) => {
         if (err) {
@@ -338,8 +317,6 @@ app.post('/api/admin/agregar-combo', verificarAdmin, upload.single('imagenCombo'
     });
 });
 
-// 🗑️ 2. NUEVA RUTA POST: ELIMINAR COMBO (ADMIN)
-// Elimina físicamente un combo del stock por su identificador primario
 app.post('/api/admin/eliminar-combo', verificarAdmin, (req, res) => {
     const { combo_id } = req.body;
 
@@ -349,19 +326,17 @@ app.post('/api/admin/eliminar-combo', verificarAdmin, (req, res) => {
             console.error("❌ Error al eliminar el combo:", err);
             return res.status(500).json({ error: 'No se pudo eliminar el combo' });
         }
-        
-        // Redirige de vuelta a la caramelería para ver el cambio de inmediato
         res.redirect('/carameleria');
     });
 });
 
-// 🍿 API GET: OBTENER TODOS LOS COMBOS (PÚBLICA - Para tu sección de caramelería)
 app.get('/api/combos', (req, res) => {
     conexion.query('SELECT * FROM combos ORDER BY id DESC', (err, results) => {
         if (err) return res.status(500).json({ error: 'Error al obtener los combos' });
         res.json(results);
     });
 });
+
 
 // 5. APIS PÚBLICAS Y AUXILIARES
 
@@ -372,7 +347,6 @@ app.get('/api/salas', (req, res) => {
     });
 });
 
-// Devuelve el estado actual de la sesión para renderizado dinámico en el Frontend (Navbar/Permisos)
 app.get('/api/usuario-actual', (req, res) => {
     if (req.session && req.session.nombre) {
         res.json({
@@ -385,14 +359,10 @@ app.get('/api/usuario-actual', (req, res) => {
     }
 });
 
-// Destruye por completo la sesión en el servidor y redirige al index principal
 app.get('/logout', (req, res) => {
     req.session.destroy(() => { res.redirect('/'); });
 });
 
-// API DE CARTELERA CON MAPEO ESTRUCTURAL JSON
-// Ejecuta un LEFT JOIN para unificar películas con sus funciones mapeadas en cartelera.
-// Transforma las filas planas de SQL en un objeto anidado estructurado de películas donde cada una contiene su array de funciones.
 app.get('/api/cartelera', (req, res) => {
     const query = `
         SELECT p.id AS pelicula_id, p.titulo, p.duracion, p.genero, p.portada, p.sinopsis,
@@ -407,21 +377,18 @@ app.get('/api/cartelera', (req, res) => {
 
         const peliculasMap = {};
         rows.forEach(row => {
-            // Si la película no ha sido agregada al mapa, inicializa su estructura base
             if (!peliculasMap[row.pelicula_id]) {
                 peliculasMap[row.pelicula_id] = {
                     id: row.pelicula_id, titulo: row.titulo, duracion: row.duracion,
                     genero: row.genero, portada: row.portada, sinopsis: row.sinopsis, funciones: []
                 };
             }
-            // Agrega la función vinculada al array de esa película si existe
             if (row.funcion_id) {
                 peliculasMap[row.pelicula_id].funciones.push({
                     id: row.funcion_id, hora_inicio: row.hora_inicio, hora_fin: row.hora_fin, sala_id: row.sala_id
                 });
             }
         });
-        // Retorna las propiedades transformadas en un array limpio de objetos JSON
         res.json(Object.values(peliculasMap));
     });
 });
@@ -434,7 +401,6 @@ app.get('/api/estrenos', (req, res) => {
     });
 });
 
-// 🎟️ 1. RUTA VISUAL: Página de selección de asientos
 app.get('/comprar/:funcionId', (req, res) => {
     if (!req.session || !req.session.usuarioId) {
         return res.redirect('/login');
@@ -442,11 +408,9 @@ app.get('/comprar/:funcionId', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'comprar.html'));
 });
 
-// 🎟️ 2. API GET: Obtener detalles de la función y asientos ocupados
 app.get('/api/funcion/:id/asientos', (req, res) => {
     const funcionId = req.params.id;
 
-    // 1. Agregamos s.capacidad a la consulta SQL
     const queryInfo = `
         SELECT f.id AS funcion_id, f.hora_inicio, p.titulo, p.portada, s.nombre AS sala, s.capacidad
         FROM funciones f
@@ -464,30 +428,26 @@ app.get('/api/funcion/:id/asientos', (req, res) => {
 
             const ocupados = asientosResult.map(a => a.numero_asiento);
             res.json({
-                funcion: infoResult[0], // ¡Ahora funcion[0] incluirá la propiedad "capacidad"!
+                funcion: infoResult[0],
                 asientosOcupados: ocupados
             });
         });
     });
 });
 
-// 🎬 1. RUTA VISUAL: Pagina para ver horarios/funciones de una película específica
 app.get('/pelicula/:id/funciones', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'funciones-pelicula.html'));
 });
 
-// 🎬 2. API GET: Devuelve datos de la película y sus funciones con sus respectivas salas
 app.get('/api/pelicula/:id/funciones', (req, res) => {
     const peliculaId = req.params.id;
 
-    // Obtener detalles de la película
     const queryPeli = 'SELECT * FROM peliculas WHERE id = ?';
     conexion.query(queryPeli, [peliculaId], (err, peliResult) => {
         if (err || peliResult.length === 0) {
             return res.status(404).json({ error: 'Película no encontrada' });
         }
 
-        // Obtener las funciones asignadas a esta película uniendo con la tabla 'salas'
         const queryFunciones = `
             SELECT f.id, f.hora_inicio, s.nombre AS sala_nombre
             FROM funciones f
@@ -509,7 +469,6 @@ app.get('/api/pelicula/:id/funciones', (req, res) => {
     });
 });
 
-// 💳 1. Vista visual de la pantalla de pago
 app.get('/pago', (req, res) => {
     if (!req.session || !req.session.usuarioId) {
         return res.redirect('/login');
@@ -517,7 +476,8 @@ app.get('/pago', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'pago.html'));
 });
 
-// 💳 2. API POST: Registrar compra, bloquear asientos y generar el QR
+// API POST: Procesar Pago y Guardar QR de Texto e Información de la Entrada
+// API POST: Procesar Pago y Guardar QR de Texto e Información de la Entrada
 app.post('/api/procesar-pago', async (req, res) => {
     if (!req.session || !req.session.usuarioId) {
         return res.status(401).json({ error: 'Debes iniciar sesión para continuar' });
@@ -530,56 +490,44 @@ app.post('/api/procesar-pago', async (req, res) => {
         return res.status(400).json({ error: 'No seleccionaste ningún asiento' });
     }
 
-    try {
-        // 1. Guardar la compra en la tabla 'compras'
-        const queryCompra = 'INSERT INTO compras (usuario_id, funcion_id, monto_total, estado) VALUES (?, ?, ?, "pagado")';
+    const asientosStr = asientos.join(', ');
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Cine-Función-${funcionId}-Asientos-${asientosStr}-Ref-${referencia}`;
 
-        conexion.query(queryCompra, [usuarioId, funcionId, total], async (err, resultCompra) => {
-            if (err) {
-                console.error("❌ Error registrando la compra:", err);
-                return res.status(500).json({ error: 'Error al procesar la compra en la BD' });
+    const query = `
+        INSERT INTO compras (usuario_id, funcion_id, asientos, referencia, qr_url, monto_total, estado) 
+        VALUES (?, ?, ?, ?, ?, ?, 'pagado')
+    `;
+
+    conexion.query(query, [usuarioId, funcionId, asientosStr, referencia, qrUrl, total], (err, result) => {
+        if (err) {
+            console.error("❌ Error detallado al guardar la compra:", err.message);
+            return res.status(500).json({ exito: false, error: 'Error al registrar la compra: ' + err.message });
+        }
+
+        const compraId = result.insertId;
+        const valuesAsientos = asientos.map(a => [compraId, funcionId, a]);
+        // Nota: Asegúrate de que tu tabla asientos_reservados tenga la columna compra_id o usa solo funcion_id y numero_asiento según tu diseño previo.
+        const queryAsientos = 'INSERT INTO asientos_reservados (compra_id, funcion_id, numero_asiento) VALUES ?';
+        
+        conexion.query(queryAsientos, [valuesAsientos], (err2) => {
+            if (err2) {
+                // Si tu tabla asientos_reservados no tiene la columna compra_id, usa esta alternativa de respaldo:
+                const queryAsientosSimple = 'INSERT INTO asientos_reservados (funcion_id, numero_asiento) VALUES ?';
+                const valuesSimple = asientos.map(a => [funcionId, a]);
+                conexion.query(queryAsientosSimple, [valuesSimple], (err3) => {
+                    if (err3) console.error("Error al bloquear asientos:", err3);
+                });
             }
 
-            const compraId = resultCompra.insertId;
-
-            // 2. Insertar los asientos reservados vinculados a esta compra
-            const queryAsientos = 'INSERT INTO asientos_reservados (compra_id, funcion_id, numero_asiento) VALUES ?';
-            const valoresAsientos = asientos.map(asiento => [compraId, funcionId, asiento]);
-
-            conexion.query(queryAsientos, [valoresAsientos], async (err) => {
-                if (err) {
-                    console.error("❌ Error guardando asientos:", err);
-                    return res.status(500).json({ error: 'Error al reservar los asientos' });
-                }
-
-                // 3. Generar la imagen Data URI del Código QR
-                const contenidoQR = `CineCentral | Ticket #${compraId} | Funcion: ${funcionId} | Asientos: ${asientos.join(',')} | Ref: ${referencia}`;
-                const qrDataURI = await QRCode.toDataURL(contenidoQR);
-
-                // 4. Guardar el código QR generado en la compra
-                const queryUpdateQR = 'UPDATE compras SET codigo_qr = ? WHERE id = ?';
-                conexion.query(queryUpdateQR, [qrDataURI, compraId], (err) => {
-                    if (err) console.error("Error al asociar el QR:", err);
-
-                    res.json({
-                        exito: true,
-                        compraId: compraId,
-                        qr: qrDataURI
-                    });
-                });
+            res.json({
+                exito: true,
+                qr: qrUrl
             });
         });
-    } catch (error) {
-        console.error("❌ Error general:", error);
-        res.status(500).json({ error: 'Error interno del servidor' });
-    }
+    });
 });
 
-// Asegúrate de tener instalado 'qrcode' (npm install qrcode) y requerido arriba:
-// const QRCode = require('qrcode');
-
 app.post('/api/procesar-pago-carameleria', async (req, res) => {
-    // 1. Verificación de Sesión
     if (!req.session || !req.session.usuarioId) {
         return res.status(401).json({ error: 'Debes iniciar sesión para comprar en la caramelería' });
     }
@@ -592,8 +540,6 @@ app.post('/api/procesar-pago-carameleria', async (req, res) => {
     }
 
     try {
-        // 2. Registrar la compra en la tabla compras
-        // NOTA: Si en tu base de datos la columna funcion_id no permite NULL, la ignoramos o pasamos 0/NULL según tu esquema
         const queryCompra = 'INSERT INTO compras (usuario_id, monto_total, estado) VALUES (?, ?, "pagado")';
 
         conexion.query(queryCompra, [usuarioId, total], async (err, resultCompra) => {
@@ -603,8 +549,6 @@ app.post('/api/procesar-pago-carameleria', async (req, res) => {
             }
 
             const compraId = resultCompra.insertId;
-
-            // 3. Generar Código QR
             const textoQR = `CineCentral | Ticket #${compraId} | ${comboNombre} (x${cantidad}) | Total: $${total} | Ref: ${referencia}`;
 
             let qrDataURI = '';
@@ -615,12 +559,10 @@ app.post('/api/procesar-pago-carameleria', async (req, res) => {
                 return res.status(500).json({ error: 'Error interno generando el QR' });
             }
 
-            // 4. Guardar QR y Actualizar Stock (Si las columnas existen)
-            const queryUpdateQR = 'UPDATE compras SET codigo_qr = ? WHERE id = ?';
+            const queryUpdateQR = 'UPDATE compras SET qr_url = ? WHERE id = ?';
             conexion.query(queryUpdateQR, [qrDataURI, compraId], (errQR) => {
                 if (errQR) console.error("⚠️ Advertencia al actualizar QR en BD:", errQR.message);
 
-                // Descontar stock del combo
                 const queryStock = 'UPDATE combos SET stock = stock - ? WHERE id = ? AND stock >= ?';
                 conexion.query(queryStock, [cantidad, comboId, cantidad], (errStock, resStock) => {
                     if (errStock) {
@@ -641,6 +583,35 @@ app.post('/api/procesar-pago-carameleria', async (req, res) => {
         return res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
+// API GET: Consultar las compras del usuario logueado para la vista "Mis Compras"
+app.get('/api/usuario/compras', (req, res) => {
+    if (!req.session || !req.session.usuarioId) {
+        return res.status(401).json({ error: 'No autorizado' });
+    }
+    
+    const usuarioId = req.session.usuarioId;
+
+    const query = `
+        SELECT c.id, p.titulo AS pelicula_titulo, s.nombre AS sala_nombre, 
+               f.hora_inicio, c.asientos, c.referencia, c.qr_url
+        FROM compras c
+        JOIN funciones f ON c.funcion_id = f.id
+        JOIN peliculas p ON f.pelicula_id = p.id
+        JOIN salas s ON f.sala_id = s.id
+        WHERE c.usuario_id = ?
+        ORDER BY c.id DESC
+    `;
+
+    conexion.query(query, [usuarioId], (err, results) => {
+        if (err) {
+            console.error("Error al consultar compras:", err);
+            return res.status(500).json({ error: 'Error al obtener las compras' });
+        }
+        res.json(results);
+    });
+});
+
 
 // 6. CONTROL DE ARRANQUE DEL SERVIDOR
 const PORT = process.env.PORT || 4000;
