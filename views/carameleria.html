@@ -68,7 +68,39 @@
                 justify-content: space-between;
                 margin-bottom: 15px;
             }
-            .modal-content select, .modal-content input {
+
+            /* ESTILOS DE LA CAJA DE PAGO MÓVIL */
+            .pago-movil-box {
+                background: #121212;
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 15px;
+                font-size: 0.85rem;
+            }
+            .pago-movil-item {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 4px;
+                color: #ccc;
+            }
+            .btn-copiar {
+                width: 100%;
+                background: #333;
+                color: #fff;
+                border: 1px solid #444;
+                padding: 6px;
+                border-radius: 4px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                margin-top: 8px;
+                transition: background 0.2s;
+            }
+            .btn-copiar:hover {
+                background: #444;
+            }
+
+            .modal-content input {
                 width: 100%;
                 padding: 10px;
                 margin-top: 6px;
@@ -179,18 +211,19 @@
                         <strong id="monto-total" style="color: #4CAF50; font-size: 1.1rem;">$0.00</strong>
                     </div>
 
-                    <form onsubmit="procesarPagoSnack(event)">
-                        <label style="font-size: 0.85rem;">Método de Pago:</label>
-                        <select id="snack-metodo" required>
-                            <option value="pago_movil">Pago Móvil</option>
-                            <option value="tarjeta">Tarjeta de Débito/Crédito</option>
-                            <option value="transferencia">Transferencia Bancaria</option>
-                        </select>
+                    <!-- CAJA DE DATOS DE PAGO MÓVIL FIJA -->
+                    <div class="pago-movil-box">
+                        <div style="font-weight: bold; color: #e50914; margin-bottom: 8px;">📲 Datos para Pago Móvil</div>
+                        <div class="pago-movil-item"><span>Banco:</span> <strong>Banesco (0134)</strong></div>
+                        <div class="pago-movil-item"><span>Cédula / RIF:</span> <strong>J-123456789</strong></div>
+                        <div class="pago-movil-item"><span>Teléfono:</span> <strong>0412-1234567</strong></div>
+                        <button type="button" class="btn-copiar" id="btn-copiar-datos" onclick="copiarDatosPagoMovil()">📋 Copiar Datos</button>
+                    </div>
 
+                    <form onsubmit="procesarPagoSnack(event)">
                         <label style="font-size: 0.85rem;">Número de Referencia:</label>
                         <input type="text" id="snack-referencia" placeholder="Ej: 87654321" required>
 
-                        <!-- Botón actualizado a 'Confirmar' -->
                         <button type="submit" class="btn-comprar-snack" id="btn-submit-snack">Confirmar</button>
                     </form>
                 </div>
@@ -341,6 +374,20 @@
                 document.getElementById('modal-snack').style.display = 'none';
             }
 
+            // COPIAR DATOS DE PAGO MÓVIL AL PORTAPAPELES
+            function copiarDatosPagoMovil() {
+                const textoCopiar = "Banco: Banesco (0134)\nRIF: J-123456789\nTeléfono: 0412-1234567";
+                navigator.clipboard.writeText(textoCopiar).then(() => {
+                    const btn = document.getElementById('btn-copiar-datos');
+                    btn.textContent = "✅ ¡Copiado!";
+                    setTimeout(() => {
+                        btn.textContent = "📋 Copiar Datos";
+                    }, 2000);
+                }).catch(err => {
+                    console.error("Error al copiar: ", err);
+                });
+            }
+
             // ENVIAR PAGO Y GENERAR QR
             async function procesarPagoSnack(e) {
                 e.preventDefault();
@@ -359,7 +406,7 @@
                             comboNombre: comboSeleccionado.nombre,
                             cantidad: cantidad,
                             total: total,
-                            metodoPago: document.getElementById('snack-metodo').value,
+                            metodoPago: 'pago_movil',
                             referencia: document.getElementById('snack-referencia').value
                         })
                     });
@@ -371,7 +418,6 @@
                         document.getElementById('qr-snack-img').src = data.qr;
                         document.getElementById('paso-qr').style.display = 'block';
                     } else {
-                        // Muestra el mensaje detallado enviado desde el servidor si falla
                         alert(data.error || 'Ocurrió un error al procesar el pago.');
                     }
                 } catch (err) {

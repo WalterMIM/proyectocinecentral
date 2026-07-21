@@ -130,41 +130,55 @@
         let asientosSeleccionados = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const res = await fetch(`/api/funcion/${funcionId}/asientos`);
-                const data = await res.json();
+    try {
+        const res = await fetch(`/api/funcion/${funcionId}/asientos`);
+        const data = await res.json();
 
-                document.getElementById('titulo-pelicula').textContent = data.funcion.titulo;
-                document.getElementById('info-funcion').textContent = `${data.funcion.sala} | Hora: ${data.funcion.hora_inicio.slice(0,5)}`;
+        document.getElementById('titulo-pelicula').textContent = data.funcion.titulo;
+        document.getElementById('info-funcion').textContent = `${data.funcion.sala} | Hora: ${data.funcion.hora_inicio.slice(0,5)}`;
 
-                renderizarAsientos(data.asientosOcupados);
-            } catch (err) {
-                console.error("Error cargando función:", err);
+        // AQUÍ PASAMOS LA CAPACIDAD DE LA SALA Y LOS OCUPADOS
+        renderizarAsientos(data.funcion.capacidad || 32, data.asientosOcupados);
+    } catch (err) {
+        console.error("Error cargando función:", err);
+    }
+});
+
+       function renderizarAsientos(capacidadTotal, ocupados) {
+    const grid = document.getElementById('grid-asientos');
+    grid.innerHTML = "";
+
+    const columnas = 8; // Fijamos 8 asientos por fila (puedes cambiarlo si deseas)
+    const totalFilas = Math.ceil(capacidadTotal / columnas);
+    const abecedario = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    let contadorAsientos = 0;
+
+    for (let f = 0; f < totalFilas; f++) {
+        const letraFila = abecedario[f];
+
+        for (let c = 1; c <= columnas; c++) {
+            contadorAsientos++;
+
+            // Si alcanzamos la capacidad total de la sala, detenemos el bucle
+            if (contadorAsientos > capacidadTotal) break;
+
+            const codigo = `${letraFila}${c}`;
+            const div = document.createElement('div');
+            div.className = 'asiento';
+            div.textContent = codigo;
+
+            // Verificamos si el asiento está ocupado según la BD
+            if (ocupados.includes(codigo)) {
+                div.classList.add('ocupado');
+            } else {
+                div.onclick = () => toggleAsiento(div, codigo);
             }
-        });
 
-        function renderizarAsientos(ocupados) {
-            const grid = document.getElementById('grid-asientos');
-            grid.innerHTML = "";
-            const filas = ['A', 'B', 'C', 'D'];
-            const columnas = 8;
-
-            filas.forEach(fila => {
-                for (let i = 1; i <= columnas; i++) {
-                    const codigo = `${fila}${i}`;
-                    const div = document.createElement('div');
-                    div.className = 'asiento';
-                    div.textContent = codigo;
-
-                    if (ocupados.includes(codigo)) {
-                        div.classList.add('ocupado');
-                    } else {
-                        div.onclick = () => toggleAsiento(div, codigo);
-                    }
-                    grid.appendChild(div);
-                }
-            });
+            grid.appendChild(div);
         }
+    }
+}
 
         function toggleAsiento(elem, codigo) {
             if (asientosSeleccionados.includes(codigo)) {

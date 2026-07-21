@@ -446,8 +446,9 @@ app.get('/comprar/:funcionId', (req, res) => {
 app.get('/api/funcion/:id/asientos', (req, res) => {
     const funcionId = req.params.id;
 
+    // 1. Agregamos s.capacidad a la consulta SQL
     const queryInfo = `
-        SELECT f.id AS funcion_id, f.hora_inicio, p.titulo, p.portada, s.nombre AS sala
+        SELECT f.id AS funcion_id, f.hora_inicio, p.titulo, p.portada, s.nombre AS sala, s.capacidad
         FROM funciones f
         JOIN peliculas p ON f.pelicula_id = p.id
         JOIN salas s ON f.sala_id = s.id
@@ -463,7 +464,7 @@ app.get('/api/funcion/:id/asientos', (req, res) => {
 
             const ocupados = asientosResult.map(a => a.numero_asiento);
             res.json({
-                funcion: infoResult[0],
+                funcion: infoResult[0], // ¡Ahora funcion[0] incluirá la propiedad "capacidad"!
                 asientosOcupados: ocupados
             });
         });
