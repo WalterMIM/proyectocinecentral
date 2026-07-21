@@ -540,40 +540,40 @@ app.post('/api/procesar-pago-carameleria', async (req, res) => {
     }
 
     try {
-        const queryCompra = 'INSERT INTO compras (usuario_id, monto_total, estado) VALUES (?, ?, "pagado")';
+        const textoQR = `CineCentral | Combo: ${comboNombre} (x${cantidad}) | Total: $${total} | Ref: ${referencia}`;
 
-        conexion.query(queryCompra, [usuarioId, total], async (err, resultCompra) => {
+        let qrDataURI = '';
+        try {
+            qrDataURI = await QRCode.toDataURL(textoQR);
+        } catch (errQR) {
+            console.error("❌ Error generando código QR:", errQR);
+            return res.status(500).json({ error: 'Error interno generando el QR' });
+        }
+
+        // Guardamos los datos del combo directamente en los campos comunes de la tabla compras
+        const queryCompra = `
+            INSERT INTO compras (usuario_id, asientos, referencia, qr_url, monto_total, estado) 
+            VALUES (?, ?, ?, ?, ?, 'pagado')
+        `;
+        const descripcionCombo = `${comboNombre} (x${cantidad})`;
+
+        conexion.query(queryCompra, [usuarioId, descripcionCombo, referencia, qrDataURI, total], (err, resultCompra) => {
             if (err) {
-                console.error("❌ Error SQL al insertar compra en BD:", err.message);
+                console.error("❌ Error SQL al insertar compra de caramelería:", err.message);
                 return res.status(500).json({ error: 'Error en BD al guardar la compra: ' + err.message });
             }
 
             const compraId = resultCompra.insertId;
-            const textoQR = `CineCentral | Ticket #${compraId} | ${comboNombre} (x${cantidad}) | Total: $${total} | Ref: ${referencia}`;
 
-            let qrDataURI = '';
-            try {
-                qrDataURI = await QRCode.toDataURL(textoQR);
-            } catch (errQR) {
-                console.error("❌ Error generando código QR:", errQR);
-                return res.status(500).json({ error: 'Error interno generando el QR' });
-            }
+            // Descontar stock del combo
+            const queryStock = 'UPDATE combos SET stock = stock - ? WHERE id = ? AND stock >= ?';
+            conexion.query(queryStock, [cantidad, comboId, cantidad], (errStock) => {
+                if (errStock) console.error("⚠️ Error actualizando stock en combos:", errStock.message);
 
-            const queryUpdateQR = 'UPDATE compras SET qr_url = ? WHERE id = ?';
-            conexion.query(queryUpdateQR, [qrDataURI, compraId], (errQR) => {
-                if (errQR) console.error("⚠️ Advertencia al actualizar QR en BD:", errQR.message);
-
-                const queryStock = 'UPDATE combos SET stock = stock - ? WHERE id = ? AND stock >= ?';
-                conexion.query(queryStock, [cantidad, comboId, cantidad], (errStock, resStock) => {
-                    if (errStock) {
-                        console.error("⚠️ Error actualizando stock en combos:", errStock.message);
-                    }
-
-                    return res.json({
-                        exito: true,
-                        compraId: compraId,
-                        qr: qrDataURI
-                    });
+                return res.json({
+                    exito: true,
+                    compraId: compraId,
+                    qr: qrDataURI
                 });
             });
         });
@@ -593,12 +593,17 @@ app.get('/api/usuario/compras', (req, res) => {
     const usuarioId = req.session.usuarioId;
 
     const query = `
-        SELECT c.id, p.titulo AS pelicula_titulo, s.nombre AS sala_nombre, 
-               f.hora_inicio, c.asientos, c.referencia, c.qr_url
+        SELECT c.id, 
+               COALESCE(p.titulo, c.asientos) AS pelicula_titulo, 
+               s.nombre AS sala_nombre, 
+               f.hora_inicio, 
+               CASE WHEN p.id IS NULL THEN 'Combo de Caramelería' ELSE c.asientos END AS asientos, 
+               c.referencia, 
+               c.qr_url
         FROM compras c
-        JOIN funciones f ON c.funcion_id = f.id
-        JOIN peliculas p ON f.pelicula_id = p.id
-        JOIN salas s ON f.sala_id = s.id
+        LEFT JOIN funciones f ON c.funcion_id = f.id
+        LEFT JOIN peliculas p ON f.pelicula_id = p.id
+        LEFT JOIN salas s ON f.sala_id = s.id
         WHERE c.usuario_id = ?
         ORDER BY c.id DESC
     `;

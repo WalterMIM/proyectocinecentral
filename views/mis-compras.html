@@ -31,6 +31,21 @@
         .ticket-info strong { color: #fff; }
         .qr-img { width: 180px; height: 180px; background: white; padding: 8px; border-radius: 8px; margin: 10px auto; display: block; }
         .no-tickets { background: #1c1c1c; padding: 30px; border-radius: 10px; text-align: center; color: #888; border: 1px solid #333; }
+    
+        
+    /* Agrega o actualiza este estilo en tu archivo mis-compras.html */
+    .qr-img {
+        width: 160px !important;
+        height: 160px !important;
+        object-fit: contain;
+        background-color: white;
+        padding: 8px;
+        border-radius: 8px;
+        margin: 10px auto;
+        display: block;
+    }
+
+    
     </style>
 </head>
 <body>
@@ -44,45 +59,52 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const contenedor = document.getElementById('contenedor-tickets');
+    document.addEventListener('DOMContentLoaded', async () => {
+        const contenedor = document.getElementById('contenedor-tickets');
 
-            try {
-                // Petición al backend para traer las compras del usuario logueado
-                const res = await fetch('/api/usuario/compras');
-                if (!res.ok) throw new Error('No se pudieron cargar las entradas');
+        try {
+            const res = await fetch('/api/usuario/compras');
+            if (!res.ok) throw new Error('No se pudieron cargar las entradas');
 
-                const tickets = await res.json();
+            const tickets = await res.json();
+            contenedor.innerHTML = '';
 
-                contenedor.innerHTML = '';
-
-                if (tickets.length === 0) {
-                    contenedor.innerHTML = '<div class="no-tickets" style="grid-column: 1 / -1;">No tienes entradas compradas todavía.</div>';
-                    return;
-                }
-
-                tickets.forEach(ticket => {
-                    const card = document.createElement('div');
-                    card.className = 'ticket-card';
-                    card.innerHTML = `
-                        <h3>${ticket.pelicula_titulo}</h3>
-                        <div class="ticket-info">
-                            <p>Sala: <strong>${ticket.sala_nombre}</strong></p>
-                            <p>Hora: <strong>${ticket.hora_inicio.slice(0, 5)}</strong></p>
-                            <p>Asientos: <strong style="color: #e50914;">${ticket.asientos}</strong></p>
-                            <p>Referencia: <strong>${ticket.referencia}</strong></p>
-                        </div>
-                        <p style="font-size: 0.8rem; color: #4CAF50; font-weight: bold; margin-bottom: 5px;">Muestra este código en la entrada</p>
-                        <img class="qr-img" src="${ticket.qr_url}" alt="Código QR de la entrada">
-                    `;
-                    contenedor.appendChild(card);
-                });
-
-            } catch (err) {
-                console.error("Error al obtener compras:", err);
-                contenedor.innerHTML = '<div class="no-tickets" style="grid-column: 1 / -1;">Error al cargar tus entradas. Inténtalo más tarde.</div>';
+            if (tickets.length === 0) {
+                contenedor.innerHTML = '<div class="no-tickets" style="grid-column: 1 / -1;">No tienes compras o entradas registradas todavía.</div>';
+                return;
             }
-        });
-    </script>
+
+            tickets.forEach(ticket => {
+                const card = document.createElement('div');
+                card.className = 'ticket-card';
+                
+                // Validamos si es una función de cine o un combo por los datos devueltos
+                const esCombo = !ticket.sala_nombre || ticket.sala_nombre === null;
+
+                card.innerHTML = `
+                    <h3>${ticket.pelicula_titulo}</h3>
+                    <div class="ticket-info">
+                        ${esCombo ? `
+                            <p>Tipo: <strong style="color: #4CAF50;">Snack / Caramelería</strong></p>
+                            <p>Detalle: <strong>${ticket.asientos}</strong></p>
+                        ` : `
+                            <p>Sala: <strong>${ticket.sala_nombre}</strong></p>
+                            <p>Hora: <strong>${ticket.hora_inicio ? ticket.hora_inicio.slice(0, 5) : 'N/A'}</strong></p>
+                            <p>Asientos: <strong style="color: #e50914;">${ticket.asientos}</strong></p>
+                        `}
+                        <p>Referencia: <strong>${ticket.referencia}</strong></p>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #4CAF50; font-weight: bold; margin-bottom: 5px;">Muestra este código para retirar</p>
+                    <img class="qr-img" src="${ticket.qr_url}" alt="Código QR">
+                `;
+                contenedor.appendChild(card);
+            });
+
+        } catch (err) {
+            console.error("Error al obtener compras:", err);
+            contenedor.innerHTML = '<div class="no-tickets" style="grid-column: 1 / -1;">Error al cargar tus compras. Inténtalo más tarde.</div>';
+        }
+    });
+</script>
 </body>
 </html>
