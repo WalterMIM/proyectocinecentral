@@ -5,48 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CineCentral - Dashboard</title>
     <link rel="stylesheet" href="/css/estilos.css">
-    <link href="https://fonts.googleapis.com/css2=family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="shortcut icon" href="Images/shortico.png" type="image/x-icon">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 
-   <nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <h1>Cine<span>Central</span></h1>
-    </div>
-    <ul class="nav-links">
-        <li><div class="contenedor">
-        <a href="/" class="contenedor">Inicio</a>
-        <a href="/"><img src="/Images/icons/home.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/carameleria">Caramelería</a>
-        <a href="/carameleria"><img src="/Images/icons/popcorn-svgrepo-com.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/cartelera">Carteleras</a>
-        <a href="/cartelera"><img src="/Images/icons/movie-svgrepo-com.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/proximos-estrenos">Próximos estrenos</a>
-        <a href="/proximos-estrenos"><img src="/Images/icons/next-svgrepo-com.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/contacto">Contacto</a>
-        <a href="/contacto"><img src="/Images/icons/mail.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/login" class="login-menu-item" id="btn-login-nav">Iniciar Sesión</a>
-        <a href="/login" class="login-menu-item"><img src="/Images/icons/log-in.svg" class="add-icon"></a>
-        </div></li>
-    </ul>
-</nav>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>Cine<span>Central</span></h1>
+        </div>
+        <ul class="nav-links">
+            <li><div class="contenedor">
+                <a href="/" class="contenedor">Inicio</a>
+                <a href="/"><img src="/Images/icons/home.svg" class="add-icon"></a>
+            </div></li>
+            
+            <li><div class="contenedor">
+                <a href="/carameleria">Caramelería</a>
+                <a href="/carameleria"><img src="/Images/icons/popcorn-svgrepo-com.svg" class="add-icon"></a>
+            </div></li>
+            
+            <li><div class="contenedor">
+                <a href="/cartelera">Carteleras</a>
+                <a href="/cartelera"><img src="/Images/icons/movie-svgrepo-com.svg" class="add-icon"></a>
+            </div></li>
+            
+            <li><div class="contenedor">
+                <a href="/proximos-estrenos">Próximos estrenos</a>
+                <a href="/proximos-estrenos"><img src="/Images/icons/next-svgrepo-com.svg" class="add-icon"></a>
+            </div></li>
+            
+            <li><div class="contenedor">
+                <a href="/contacto">Contacto</a>
+                <a href="/contacto"><img src="/Images/icons/mail.svg" class="add-icon"></a>
+            </div></li>
+            
+            <li><div class="contenedor">
+                <a href="/login" class="login-menu-item" id="btn-login-nav">Iniciar Sesión</a>
+                <a href="/login" class="login-menu-item"><img src="/Images/icons/log-in.svg" class="add-icon"></a>
+            </div></li>
+        </ul>
+    </nav>
+
     <div class="menu-toggle" id="menuToggle">
         <span></span><span></span><span></span>
     </div>
@@ -74,12 +74,12 @@
 
         <section class="movies-section">
             <div class="section-header">
-                <h2>Cartelera</h2>
+                <h2>Cartelera Destacada</h2>
                 <a href="/cartelera"><img src="/Images/icons/plus-circle.svg" class="add-icon"></a>
             </div>
 
             <div class="movies-grid" id="contenedor-ultimos-estrenos">
-                <p style="color: #aaa;">Cargando últimos estrenos...</p>
+                <p style="color: #aaa;">Cargando películas en cartelera...</p>
             </div>
         </section>
     </main>
@@ -91,7 +91,7 @@
             const carruselTira = document.getElementById('carrusel-tira-dinamica');
             const gridEstrenos = document.getElementById('contenedor-ultimos-estrenos');
 
-            // 1. Control de Estado de Sesión existente
+            // 1. Estado de Sesión
             fetch('/api/usuario-actual')
                 .then(res => res.json())
                 .then(data => {
@@ -117,18 +117,18 @@
                 })
                 .catch(err => console.error('Error al verificar la sesión:', err));
 
-            // 2. Carga Dinámica: Carrusel y Últimas 4 Películas
+            // 2. Carga Dinámica: Carrusel y Películas con Horarios Directos
             try {
                 const respuesta = await fetch('/api/cartelera');
                 const peliculas = await respuesta.json();
 
                 if (peliculas.length === 0) {
                     carruselTira.innerHTML = '<p style="color: white; padding: 20px;">No hay banners disponibles</p>';
-                    gridEstrenos.innerHTML = '<p style="color: #aaa;">No hay películas programadas.</p>';
+                    gridEstrenos.innerHTML = '<p style="color: #aaa;">No hay películas en cartelera por el momento.</p>';
                     return;
                 }
 
-                // --- LLENAR EL CARRUSEL (Todas las disponibles) ---
+                // LLENAR EL CARRUSEL
                 carruselTira.innerHTML = "";
                 peliculas.forEach(peli => {
                     const img = document.createElement('img');
@@ -137,20 +137,34 @@
                     carruselTira.appendChild(img);
                 });
 
-                // Reinicializar la lógica de tu carrusel del script.js si es necesario
                 if (typeof inicializarCarrusel === 'function') {
                     inicializarCarrusel();
                 }
 
-                // LLENAR LA REJILLA INFERIOR (Solo las últimas 4 añadidas)
+                // LLENAR LA REJILLA (Últimas 4 con atajo de Horarios)
                 gridEstrenos.innerHTML = "";
                 
-                // Ordenamos por ID de mayor a menor (más recientes primero) y tomamos 4
                 const ultimasCuatro = [...peliculas]
                     .sort((a, b) => b.id - a.id)
                     .slice(0, 4);
 
                 ultimasCuatro.forEach(peli => {
+                    // Generar botones de horarios
+                    let botonesHorarios = "";
+                    if (peli.funciones && peli.funciones.length > 0) {
+                        peli.funciones.forEach(func => {
+                            const horaCorta = func.hora_inicio.substring(0, 5);
+                            botonesHorarios += `<a href="/comprar/${func.id}" class="btn-hora" style="text-decoration: none; display: inline-block;">${horaCorta}</a>`;
+                        });
+                    } else {
+                        botonesHorarios = "<span style='color: #888; font-size: 0.85em;'>Sin funciones hoy</span>";
+                    }
+
+                    // Cortar sinopsis si es muy larga
+                    const sinopsisCorta = peli.sinopsis 
+                        ? (peli.sinopsis.length > 80 ? peli.sinopsis.substring(0, 80) + '...' : peli.sinopsis)
+                        : '';
+
                     const article = document.createElement('article');
                     article.className = 'movie-card';
                     article.innerHTML = `
@@ -161,16 +175,36 @@
                         <div class="movie-info">
                             <h3>${peli.titulo}</h3>
                             <p class="meta">${peli.duracion} min | ${peli.genero || 'General'}</p>
+                            <p style="font-size: 0.85em; color: #aaa; margin: 5px 0;">${sinopsisCorta}</p>
+                            <div class="contenedor-horarios" style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                ${botonesHorarios}
+                            </div>
                         </div>
                     `;
                     gridEstrenos.appendChild(article);
                 });
 
             } catch (error) {
-                console.error("❌ Error estructurando la página de inicio:", error);
-                gridEstrenos.innerHTML = '<p style="color: #e50914;">Error al mapear la cartelera.</p>';
+                console.error("❌ Error en Inicio:", error);
+                gridEstrenos.innerHTML = '<p style="color: #e50914;">Error al cargar las películas.</p>';
             }
         });
     </script>
+
+    <style>
+        .btn-hora {
+            background-color: #e50914;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.85em;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn-hora:hover {
+            background-color: #b81d24;
+            transform: scale(1.05);
+        }
+    </style>
 </body>
 </html>

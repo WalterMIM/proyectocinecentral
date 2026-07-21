@@ -1,90 +1,91 @@
 <!DOCTYPE html>
 <html lang="es">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>CineCentral - Dashboard</title>
-		<link rel="stylesheet" href="/css/estilos.css">
-		<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
-		<link rel="shortcut icon" href="Images/shortico.png" type="image/x-icon">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	</head>
-	<body>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>CineCentral - Cartelera</title>
+        <link rel="stylesheet" href="/css/estilos.css">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+        <link rel="shortcut icon" href="Images/shortico.png" type="image/x-icon">
+    </head>
+    <body>
         <div id="menuToggle" class="menu-toggle">
             <span></span>
             <span></span>
             <span></span>
         </div>
-		<nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <h1>Cine<span>Central</span></h1>
-    </div>
-    <ul class="nav-links">
-        <li><div class="contenedor">
-        <a href="/" class="">Inicio</a>
-        <a href="/"><img src="/Images/icons/home.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/carameleria">Caramelería</a>
-        <a href="/carameleria"><img src="/Images/icons/popcorn-svgrepo-com.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/cartelera">Carteleras</a>
-        <a href="/cartelera"><img src="/Images/icons/movie-svgrepo-com.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/proximos-estrenos">Próximos estrenos</a>
-        <a href="/proximos-estrenos"><img src="/Images/icons/next-svgrepo-com.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/contacto">Contacto</a>
-        <a href="/contacto"><img src="/Images/icons/mail.svg" class="add-icon"></a>
-        </div></li>
-        
-        <li><div class="contenedor">
-        <a href="/login" class="login-menu-item" id="btn-login-nav">Iniciar Sesión</a>
-        <a href="/login" class="login-menu-item"><img src="/Images/icons/log-in.svg" class="add-icon"></a>
-        </div></li>
-    </ul>
-</nav>
-		
-		<main class="main-content">
-    <section class="movies-section">
-       <div class="section-header">
-    <h2>Cartelera</h2>
-</div>
 
-<div id="contenedor-admin-ops" style="margin-bottom: 20px; display: none;">
-    <a href="/admin" class="btn-admin-add">+ Agregar Nueva Película</a>
-</div>
-        <div class="movies-grid-2" id="contenedor-cartelera">
-            <p style="color: #aaa;">Cargando películas en cartelera...</p>
-        </div>
-    </section>
-</main>
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>Cine<span>Central</span></h1>
+            </div>
+            <ul class="nav-links">
+                <li><div class="contenedor">
+                    <a href="/">Inicio</a>
+                    <a href="/"><img src="/Images/icons/home.svg" class="add-icon"></a>
+                </div></li>
+                
+                <li><div class="contenedor">
+                    <a href="/carameleria">Caramelería</a>
+                    <a href="/carameleria"><img src="/Images/icons/popcorn-svgrepo-com.svg" class="add-icon"></a>
+                </div></li>
+                
+                <li><div class="contenedor">
+                    <a href="/cartelera">Carteleras</a>
+                    <a href="/cartelera"><img src="/Images/icons/movie-svgrepo-com.svg" class="add-icon"></a>
+                </div></li>
+                
+                <li><div class="contenedor">
+                    <a href="/proximos-estrenos">Próximos estrenos</a>
+                    <a href="/proximos-estrenos"><img src="/Images/icons/next-svgrepo-com.svg" class="add-icon"></a>
+                </div></li>
+                
+                <li><div class="contenedor">
+                    <a href="/contacto">Contacto</a>
+                    <a href="/contacto"><img src="/Images/icons/mail.svg" class="add-icon"></a>
+                </div></li>
+                
+                <li><div class="contenedor">
+                    <a href="/login" class="login-menu-item" id="btn-login-nav">Iniciar Sesión</a>
+                    <a href="/login" class="login-menu-item"><img src="/Images/icons/log-in.svg" class="add-icon"></a>
+                </div></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <section class="movies-section">
+                <div class="section-header">
+                    <h2>Cartelera</h2>
+                </div>
+
+                <div id="contenedor-admin-ops" style="margin-bottom: 20px; display: none;">
+                    <a href="/admin" class="btn-admin-add">+ Agregar Nueva Película</a>
+                </div>
+
+                <div class="movies-grid-2" id="contenedor-cartelera">
+                    <p style="color: #aaa;">Cargando películas en cartelera...</p>
+                </div>
+            </section>
+        </main>
 
 <script>
     document.addEventListener("DOMContentLoaded", async () => {
         const contenedor = document.getElementById("contenedor-cartelera");
         const contenedorAdmin = document.getElementById("contenedor-admin-ops");
 
-        // 🔍 VERIFICACIÓN DE ROL: Consultamos si el usuario es administrador
+        // 🔍 VERIFICACIÓN DE ROL
         try {
             const resUsuario = await fetch('/api/usuario-actual');
             const usuario = await resUsuario.json();
 
             if (usuario.logueado && usuario.rol === 'admin') {
-                contenedorAdmin.style.display = "block"; // Hacemos visible el botón si es admin
+                contenedorAdmin.style.display = "block";
             }
         } catch (error) {
             console.error("Error verificando el rol del usuario:", error);
         }
 
-        // 🎬 CARGA DE PELÍCULAS (Tu lógica anterior que funciona perfecto)
+        // 🎬 CARGA DE PELÍCULAS
         try {
             const respuesta = await fetch('/api/cartelera');
             const peliculas = await respuesta.json();
@@ -101,7 +102,8 @@
                 if (peli.funciones && peli.funciones.length > 0) {
                     peli.funciones.forEach(func => {
                         const horaCorta = func.hora_inicio.substring(0, 5);
-                        botonesHorarios += `<button class="btn-hora" onclick="alert('Seleccionaste la función de las ${horaCorta} para ${peli.titulo}')">${horaCorta}</button>`;
+                        // 🟢 AQUÍ ESTÁ EL CAMBIO: Ahora cada hora es un enlace a la sala de asientos
+                        botonesHorarios += `<a href="/comprar/${func.id}" class="btn-hora" style="text-decoration: none; display: inline-block;">${horaCorta}</a>`;
                     });
                 } else {
                     botonesHorarios = "<span style='color: #888; font-size: 0.85em;'>Sin funciones hoy</span>";
@@ -146,9 +148,6 @@
     .btn-admin-add:hover {
         background-color: #b81d24;
     }
-</style>
-
-<style>
     .btn-hora {
         background-color: #e50914;
         color: white;
@@ -164,6 +163,6 @@
         background-color: #b81d24;
     }
 </style>
-	<script src="/javascript/script.js"></script>
-</body>
+        <script src="/javascript/script.js"></script>
+    </body>
 </html>

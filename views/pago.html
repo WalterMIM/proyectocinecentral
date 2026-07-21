@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineCentral - Pago y Confirmación</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #141414; color: white; font-family: 'Poppins', sans-serif; padding: 20px; }
+        .pago-card { max-width: 480px; margin: 30px auto; background: #1c1c1c; padding: 30px; border-radius: 10px; border: 1px solid #333; text-align: center; }
+        .resumen-linea { display: flex; justify-content: space-between; margin: 15px 0; border-bottom: 1px dashed #333; padding-bottom: 10px; }
+        select, input { width: 100%; padding: 12px; margin-top: 8px; background: #2b2b2b; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        .btn-pagar { width: 100%; background: #4CAF50; color: white; border: none; padding: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; font-size: 1rem; margin-top: 20px; transition: background 0.2s; }
+        .btn-pagar:hover { background: #45a049; }
+        #ticket-result { display: none; margin-top: 20px; }
+        #qr-code { width: 220px; height: 220px; margin: 15px auto; background: white; padding: 10px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="pago-card" id="seccion-pago">
+        <h2>Confirmación de Pago 💳</h2>
+        
+        <div class="resumen-linea">
+            <span>Asientos:</span>
+            <strong id="asientos-txt" style="color: #e50914;">-</strong>
+        </div>
+        <div class="resumen-linea">
+            <span>Monto Total:</span>
+            <strong id="total-txt" style="color: #4CAF50;">$0.00</strong>
+        </div>
+
+        <form id="form-pago" onsubmit="procesarTransaccion(event)">
+            <label style="display:block; text-align:left; margin-top: 15px; font-size: 0.9rem;">Método de Pago:</label>
+            <select id="metodo" required>
+                <option value="pago_movil">Pago Móvil</option>
+                <option value="tarjeta">Tarjeta de Débito/Crédito</option>
+                <option value="transferencia">Transferencia Bancaria</option>
+            </select>
+
+            <label style="display:block; text-align:left; margin-top: 15px; font-size: 0.9rem;">Número de Referencia / Comprobante:</label>
+            <input type="text" id="referencia" placeholder="Ej: 98765432" required>
+
+            <button type="submit" class="btn-pagar" id="btn-submit">Confirmar y Generar Entrada</button>
+        </form>
+    </div>
+
+    <!-- Ticket de entrada con QR -->
+    <div class="pago-card" id="ticket-result">
+        <h2 style="color: #4CAF50; margin-bottom: 5px;">¡Entrada Confirmada! 🎉</h2>
+        <p style="font-size: 0.9rem; color: #ccc;">Muestra este código QR al entrar a la sala:</p>
+        
+        <img id="qr-code" src="" alt="Código QR Entrada">
+        
+        <p style="font-size: 0.85rem; color: #aaa;">Ticket guardado exitosamente en tu cuenta.</p>
+        <a href="/cartelera" style="color: #e50914; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 15px;">Volver a la Cartelera</a>
+    </div>
+
+    <script>
+        const funcionId = sessionStorage.getItem('reserva_funcion_id');
+        const asientos = JSON.parse(sessionStorage.getItem('reserva_asientos') || '[]');
+        const total = sessionStorage.getItem('reserva_total');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!asientos.length) {
+                alert("No seleccionaste asientos previamente.");
+                window.location.href = '/cartelera';
+                return;
+            }
+            document.getElementById('asientos-txt').textContent = asientos.join(', ');
+            document.getElementById('total-txt').textContent = `$${total}`;
+        });
+
+        async function procesarTransaccion(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.textContent = "Procesando...";
+
+            try {
+                const res = await fetch('/api/procesar-pago', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        funcionId: funcionId,
+                        asientos: asientos,
+                        total: total,
+                        metodoPago: document.getElementById('metodo').value,
+                        referencia: document.getElementById('referencia').value
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.exito) {
+                    sessionStorage.clear(); // Limpiar la reserva temporal
+                    document.getElementById('seccion-pago').style.display = 'none';
+                    document.getElementById('qr-code').src = data.qr;
+                    document.getElementById('ticket-result').style.display = 'block';
+                } else {
+                    alert(data.error || 'Ocurrió un error al procesar el pago.');
+                    btn.disabled = false;
+                    btn.textContent = "Confirmar y Generar Entrada";
+                }
+            } catch (err) {
+                console.error("Error en pago:", err);
+                alert("Error de conexión con el servidor.");
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

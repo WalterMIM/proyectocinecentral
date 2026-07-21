@@ -7,7 +7,92 @@
         <link rel="stylesheet" href="/css/estilos.css">
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
         <link rel="shortcut icon" href="Images/shortico.png" type="image/x-icon">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            /* ESTILOS DEL MODAL DE PAGO DE CARAMELERÍA */
+            .modal-overlay {
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.85);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                padding: 15px;
+            }
+            .modal-content {
+                background: #1c1c1c;
+                border: 1px solid #333;
+                border-radius: 10px;
+                max-width: 420px;
+                width: 100%;
+                padding: 25px;
+                color: white;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+                position: relative;
+            }
+            .modal-close {
+                position: absolute;
+                top: 15px; right: 15px;
+                background: transparent;
+                border: none;
+                color: #aaa;
+                font-size: 1.5rem;
+                cursor: pointer;
+            }
+            .modal-close:hover { color: #e50914; }
+            .qty-selector {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 15px;
+                margin: 20px 0;
+            }
+            .btn-qty {
+                background: #333;
+                color: white;
+                border: none;
+                width: 38px; height: 38px;
+                border-radius: 50%;
+                font-size: 1.2rem;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .btn-qty:hover { background: #e50914; }
+            .total-box {
+                background: #262626;
+                padding: 12px;
+                border-radius: 6px;
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 15px;
+            }
+            .modal-content select, .modal-content input {
+                width: 100%;
+                padding: 10px;
+                margin-top: 6px;
+                margin-bottom: 15px;
+                background: #2b2b2b;
+                border: 1px solid #444;
+                color: white;
+                border-radius: 5px;
+                box-sizing: border-box;
+            }
+            .btn-comprar-snack {
+                width: 100%;
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 12px;
+                font-weight: bold;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: background 0.2s;
+            }
+            .btn-comprar-snack:hover { background: #45a049; }
+        </style>
     </head>
     <body>
         <div id="menuToggle" class="menu-toggle">
@@ -53,123 +138,254 @@
             </ul>
         </nav>
         
-      <main class="main-content">
-    <div id="admin-combos-control" style="display: none; margin-bottom: 25px; padding: 15px; background: #1c1c1c; border-radius: 6px; border: 1px solid #333;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <span style="font-weight: bold; color: #fff;">Panel de Gestión de Almacén</span>
-            <a href="/admin" style="background-color: #e50914; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; font-size: 0.85rem;">
-                ⚙️ Ir a Agregar Combo / Películas
-            </a>
-        </div>
-        
-        <div id="lista-eliminacion-admin" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #333; padding-top: 12px;">
-            <p style="color: #aaa; font-size: 0.85rem; margin: 0;">Cargando opciones de eliminación...</p>
-        </div>
-    </div>
+        <main class="main-content">
+            <div id="admin-combos-control" style="display: none; margin-bottom: 25px; padding: 15px; background: #1c1c1c; border-radius: 6px; border: 1px solid #333;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <span style="font-weight: bold; color: #fff;">Panel de Gestión de Almacén</span>
+                    <a href="/admin" style="background-color: #e50914; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; font-size: 0.85rem;">
+                        ⚙️ Ir a Agregar Combo / Películas
+                    </a>
+                </div>
+                
+                <div id="lista-eliminacion-admin" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #333; padding-top: 12px;">
+                    <p style="color: #aaa; font-size: 0.85rem; margin: 0;">Cargando opciones de eliminación...</p>
+                </div>
+            </div>
 
-    <div class="candy-grid" id="contenedor-combos">
-        <p style="color: #aaa; padding: 20px;">Cargando productos de caramelería...</p>
-    </div>
-</main>
+            <div class="candy-grid" id="contenedor-combos">
+                <p style="color: #aaa; padding: 20px;">Cargando productos de caramelería...</p>
+            </div>
+        </main>
 
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        const contenedorCombos = document.getElementById('contenedor-combos');
-        const listaEliminacionAdmin = document.getElementById('lista-eliminacion-admin');
-        let esAdmin = false;
+        <!-- 🍿 MODAL DE COMPRA Y PAGO DE CARAMELERÍA -->
+        <div class="modal-overlay" id="modal-snack">
+            <div class="modal-content">
+                <button class="modal-close" onclick="cerrarModal()">&times;</button>
 
-        // 1. Verificar Sesión y Rol
-        try {
-            const resUser = await fetch('/api/usuario-actual');
-            const dataUser = await resUser.json();
-            
-            const btnLoginNav = document.getElementById('btn-login-nav');
-            if (dataUser.logueado && btnLoginNav) {
-                btnLoginNav.textContent = 'Cerrar Sesión';
-                btnLoginNav.href = '/logout';
-                btnLoginNav.style.color = '#e50914';
-            }
+                <!-- PASO 1: SELECCIONAR CANTIDAD Y PAGO -->
+                <div id="paso-formulario">
+                    <h3 id="modal-titulo" style="margin-top:0; color: #e50914;">Nombre Combo</h3>
+                    <p id="modal-desc" style="color: #aaa; font-size: 0.85rem;">Descripción...</p>
 
-            if (dataUser.logueado && dataUser.rol === 'admin') {
-                esAdmin = true;
-                document.getElementById('admin-combos-control').style.display = 'block';
-            }
-        } catch (err) { console.error(err); }
-
-        // 2. Carga Dinámica de los Combos
-        try {
-            const respuesta = await fetch('/api/combos');
-            const combos = await respuesta.json();
-
-            if (combos.length === 0) {
-                contenedorCombos.innerHTML = '<p style="color: #aaa; padding: 20px;">No hay productos disponibles.</p>';
-                if(esAdmin) listaEliminacionAdmin.innerHTML = '<p style="color: #aaa;">No hay elementos para eliminar.</p>';
-                return;
-            }
-
-            contenedorCombos.innerHTML = "";
-            if(esAdmin) listaEliminacionAdmin.innerHTML = ""; // Limpiar panel de borrado
-
-            combos.forEach(combo => {
-                // Evaluar si tiene stock cero
-                const sinStock = parseInt(combo.stock) <= 0;
-
-                // --- RENDER PARA EL PÚBLICO ---
-                const article = document.createElement('article');
-                article.className = 'candy-card';
-                // Si no hay disponibilidad, aplicamos opacidad con CSS inline
-                if (sinStock) {
-                    article.style.opacity = "0.4";
-                    article.style.filter = "grayscale(60%)";
-                }
-
-                article.innerHTML = `
-                    <div class="candy-poster" style="position: relative;">
-                        <img src="${combo.imagen}" alt="${combo.nombre}">
-                        ${sinStock ? `<span style="position: absolute; top: 10px; left: 10px; background: #e50914; color: white; padding: 4px 8px; font-size: 0.75rem; font-weight: bold; border-radius: 3px; text-transform: uppercase;">No Disponible</span>` : ''}
+                    <label style="font-size: 0.85rem;">Cantidad:</label>
+                    <div class="qty-selector">
+                        <button class="btn-qty" onclick="cambiarCantidad(-1)">-</button>
+                        <span id="qty-count" style="font-size: 1.3rem; font-weight: bold;">1</span>
+                        <button class="btn-qty" onclick="cambiarCantidad(1)">+</button>
                     </div>
-                    <div class="candy-info">
-                        <h3>${combo.nombre}</h3>
-                        <p class="descripcion" style="color: #aaa; font-size: 0.85rem; margin: 5px 0;">${combo.descripcion}</p>
-                        <p class="precio">$${parseFloat(combo.precio).toFixed(2)}</p>
+
+                    <div class="total-box">
+                        <span>Total a pagar:</span>
+                        <strong id="monto-total" style="color: #4CAF50; font-size: 1.1rem;">$0.00</strong>
                     </div>
-                `;
-                contenedorCombos.appendChild(article);
 
-                // --- RENDER PANEL DE ELIMINACIÓN (SOLO ADMIN) ---
-                if (esAdmin) {
-                    const itemBorrar = document.createElement('div');
-                    itemBorrar.style.display = 'flex';
-                    itemBorrar.style.justify = 'between';
-                    itemBorrar.style.alignItems = 'center';
-                    itemBorrar.style.background = '#222';
-                    itemBorrar.style.padding = '8px 12px';
-                    itemBorrar.style.borderRadius = '4px';
-                    itemBorrar.style.justifyContent = 'space-between';
+                    <form onsubmit="procesarPagoSnack(event)">
+                        <label style="font-size: 0.85rem;">Método de Pago:</label>
+                        <select id="snack-metodo" required>
+                            <option value="pago_movil">Pago Móvil</option>
+                            <option value="tarjeta">Tarjeta de Débito/Crédito</option>
+                            <option value="transferencia">Transferencia Bancaria</option>
+                        </select>
 
-                    itemBorrar.innerHTML = `
-                        <span style="font-size: 0.9rem; color: #eee;">❌ ${combo.nombre} (Stock: ${combo.stock})</span>
-                        <form action="/api/admin/eliminar-combo" method="POST" onsubmit="return confirmarEliminacion('${combo.nombre}')">
-                            <input type="hidden" name="combo_id" value="${combo.id}">
-                            <button type="submit" style="background: #e50914; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.8rem; font-weight: bold;">
-                                Eliminar
-                            </button>
-                        </form>
-                    `;
-                    listaEliminacionAdmin.appendChild(itemBorrar);
+                        <label style="font-size: 0.85rem;">Número de Referencia:</label>
+                        <input type="text" id="snack-referencia" placeholder="Ej: 87654321" required>
+
+                        <!-- Botón actualizado a 'Confirmar' -->
+                        <button type="submit" class="btn-comprar-snack" id="btn-submit-snack">Confirmar</button>
+                    </form>
+                </div>
+
+                <!-- PASO 2: TICKET CON QR -->
+                <div id="paso-qr" style="display: none; text-align: center;">
+                    <h3 style="color: #4CAF50; margin-top: 0;">¡Pedido Confirmado! 🎉</h3>
+                    <p style="font-size: 0.85rem; color: #ccc;">Muestra este código en el mostrador de caramelería:</p>
+                    <img id="qr-snack-img" src="" alt="Código QR Snack" style="width: 200px; height: 200px; background: white; padding: 8px; border-radius: 8px; margin: 10px 0;">
+                    <button class="btn-comprar-snack" style="background: #e50914;" onclick="cerrarModal()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let comboSeleccionado = null;
+            let cantidad = 1;
+            let usuarioLogueado = false;
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                const contenedorCombos = document.getElementById('contenedor-combos');
+                const listaEliminacionAdmin = document.getElementById('lista-eliminacion-admin');
+                let esAdmin = false;
+
+                // 1. Verificar Sesión
+                try {
+                    const resUser = await fetch('/api/usuario-actual');
+                    const dataUser = await resUser.json();
+                    
+                    usuarioLogueado = dataUser.logueado;
+
+                    const btnLoginNav = document.getElementById('btn-login-nav');
+                    if (dataUser.logueado && btnLoginNav) {
+                        btnLoginNav.textContent = 'Cerrar Sesión';
+                        btnLoginNav.href = '/logout';
+                        btnLoginNav.style.color = '#e50914';
+                    }
+
+                    if (dataUser.logueado && dataUser.rol === 'admin') {
+                        esAdmin = true;
+                        document.getElementById('admin-combos-control').style.display = 'block';
+                    }
+                } catch (err) { console.error(err); }
+
+                // 2. Carga Dinámica de Combos
+                try {
+                    const respuesta = await fetch('/api/combos');
+                    const combos = await respuesta.json();
+
+                    if (!Array.isArray(combos) || combos.length === 0) {
+                        contenedorCombos.innerHTML = '<p style="color: #aaa; padding: 20px;">No hay productos disponibles.</p>';
+                        if(esAdmin) listaEliminacionAdmin.innerHTML = '<p style="color: #aaa;">No hay elementos para eliminar.</p>';
+                        return;
+                    }
+
+                    contenedorCombos.innerHTML = "";
+                    if(esAdmin) listaEliminacionAdmin.innerHTML = "";
+
+                    combos.forEach(combo => {
+                        const sinStock = parseInt(combo.stock) <= 0;
+
+                        const article = document.createElement('article');
+                        article.className = 'candy-card';
+                        article.style.cursor = sinStock ? 'not-allowed' : 'pointer';
+
+                        if (sinStock) {
+                            article.style.opacity = "0.4";
+                            article.style.filter = "grayscale(60%)";
+                        } else {
+                            article.onclick = () => abrirModalCombo(combo);
+                        }
+
+                        article.innerHTML = `
+                            <div class="candy-poster" style="position: relative;">
+                                <img src="${combo.imagen}" alt="${combo.nombre}">
+                                ${sinStock ? `<span style="position: absolute; top: 10px; left: 10px; background: #e50914; color: white; padding: 4px 8px; font-size: 0.75rem; font-weight: bold; border-radius: 3px; text-transform: uppercase;">No Disponible</span>` : ''}
+                            </div>
+                            <div class="candy-info">
+                                <h3>${combo.nombre}</h3>
+                                <p class="descripcion" style="color: #aaa; font-size: 0.85rem; margin: 5px 0;">${combo.descripcion}</p>
+                                <p class="precio" style="color: #4CAF50; font-weight: bold;">$${parseFloat(combo.precio).toFixed(2)}</p>
+                            </div>
+                        `;
+                        contenedorCombos.appendChild(article);
+
+                        // PANEL ADMIN DE ELIMINACIÓN
+                        if (esAdmin) {
+                            const itemBorrar = document.createElement('div');
+                            itemBorrar.style.display = 'flex';
+                            itemBorrar.style.justifyContent = 'space-between';
+                            itemBorrar.style.alignItems = 'center';
+                            itemBorrar.style.background = '#222';
+                            itemBorrar.style.padding = '8px 12px';
+                            itemBorrar.style.borderRadius = '4px';
+
+                            itemBorrar.innerHTML = `
+                                <span style="font-size: 0.9rem; color: #eee;">❌ ${combo.nombre} (Stock: ${combo.stock})</span>
+                                <form action="/api/admin/eliminar-combo" method="POST" onsubmit="return confirmarEliminacion('${combo.nombre}')">
+                                    <input type="hidden" name="combo_id" value="${combo.id}">
+                                    <button type="submit" style="background: #e50914; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.8rem; font-weight: bold;">
+                                        Eliminar
+                                    </button>
+                                </form>
+                            `;
+                            listaEliminacionAdmin.appendChild(itemBorrar);
+                        }
+                    });
+
+                } catch (error) {
+                    console.error(error);
+                    contenedorCombos.innerHTML = '<p style="color: #e50914; padding: 20px;">Error al conectar con la base de datos.</p>';
                 }
             });
 
-        } catch (error) {
-            console.error(error);
-            contenedorCombos.innerHTML = '<p style="color: #e50914; padding: 20px;">Error al conectar con la base de datos.</p>';
-        }
-    });
+            // LÓGICA DEL MODAL
+            function abrirModalCombo(combo) {
+                if (!usuarioLogueado) {
+                    alert("Debes iniciar sesión para realizar compras en la caramelería.");
+                    window.location.href = '/login';
+                    return;
+                }
 
-    // Función nativa para confirmar antes de enviar el formulario de borrado
-    function confirmarEliminacion(nombreCombo) {
-        return confirm(`¿Estás completamente seguro de que deseas eliminar el "${nombreCombo}" del inventario? Esta acción no se puede deshacer.`);
-    }
-</script>
+                comboSeleccionado = combo;
+                cantidad = 1;
+                actualizarVistaModal();
+
+                document.getElementById('paso-formulario').style.display = 'block';
+                document.getElementById('paso-qr').style.display = 'none';
+                document.getElementById('modal-snack').style.display = 'flex';
+            }
+
+            function cambiarCantidad(delta) {
+                if (cantidad + delta >= 1 && cantidad + delta <= comboSeleccionado.stock) {
+                    cantidad += delta;
+                    actualizarVistaModal();
+                }
+            }
+
+            function actualizarVistaModal() {
+                document.getElementById('modal-titulo').textContent = comboSeleccionado.nombre;
+                document.getElementById('modal-desc').textContent = comboSeleccionado.descripcion;
+                document.getElementById('qty-count').textContent = cantidad;
+                const total = (parseFloat(comboSeleccionado.precio) * cantidad).toFixed(2);
+                document.getElementById('monto-total').textContent = `$${total}`;
+            }
+
+            function cerrarModal() {
+                document.getElementById('modal-snack').style.display = 'none';
+            }
+
+            // ENVIAR PAGO Y GENERAR QR
+            async function procesarPagoSnack(e) {
+                e.preventDefault();
+                const btn = document.getElementById('btn-submit-snack');
+                btn.disabled = true;
+                btn.textContent = "Procesando...";
+
+                const total = (parseFloat(comboSeleccionado.precio) * cantidad).toFixed(2);
+
+                try {
+                    const res = await fetch('/api/procesar-pago-carameleria', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            comboId: comboSeleccionado.id,
+                            comboNombre: comboSeleccionado.nombre,
+                            cantidad: cantidad,
+                            total: total,
+                            metodoPago: document.getElementById('snack-metodo').value,
+                            referencia: document.getElementById('snack-referencia').value
+                        })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok && data.exito) {
+                        document.getElementById('paso-formulario').style.display = 'none';
+                        document.getElementById('qr-snack-img').src = data.qr;
+                        document.getElementById('paso-qr').style.display = 'block';
+                    } else {
+                        // Muestra el mensaje detallado enviado desde el servidor si falla
+                        alert(data.error || 'Ocurrió un error al procesar el pago.');
+                    }
+                } catch (err) {
+                    console.error("Error procesando snack:", err);
+                    alert("No se pudo conectar con la API. Revisa la consola del navegador y la terminal de Node.js.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = "Confirmar";
+                }
+            }
+
+            function confirmarEliminacion(nombreCombo) {
+                return confirm(`¿Estás seguro de que deseas eliminar el "${nombreCombo}"?`);
+            }
+        </script>
     </body>
 </html>

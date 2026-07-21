@@ -19,7 +19,8 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "mysql2": "^3.22.5",
-    "nodemailer": "^9.0.1"
+    "nodemailer": "^9.0.1",
+    "qrcode": "^1.5.4"
   },
   "packageManager": "pnpm@11.3.0"
 }

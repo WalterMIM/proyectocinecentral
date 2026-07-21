@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineCentral - Seleccionar Asientos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #141414;
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .compra-container {
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        .pantalla {
+            background: #e50914;
+            height: 8px;
+            width: 80%;
+            margin: 20px auto 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #e50914;
+        }
+        .grid-asientos {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+            max-width: 500px;
+            margin: 30px auto;
+        }
+        .asiento {
+            background: #333;
+            padding: 12px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        .asiento:hover:not(.ocupado) {
+            background: #555;
+        }
+        .asiento.ocupado {
+            background: #222;
+            color: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .asiento.seleccionado {
+            background: #4CAF50;
+            color: white;
+        }
+        .leyenda {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 25px 0;
+            font-size: 0.85rem;
+        }
+        .leyenda-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .box {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        .resumen-panel {
+            background: #1c1c1c;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            border: 1px solid #333;
+        }
+        .btn-continuar {
+            background: #e50914;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        .btn-continuar:hover:not(:disabled) {
+            background: #b80710;
+        }
+        .btn-continuar:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="compra-container">
+        <h1 id="titulo-pelicula">Cargando...</h1>
+        <p id="info-funcion" style="color: #aaa;"></p>
+
+        <div class="pantalla"></div>
+        <p style="color: #aaa; font-size: 0.8rem; margin-bottom: 20px;">PANTALLA</p>
+
+        <div class="leyenda">
+            <div class="leyenda-item"><div class="box" style="background: #333;"></div> Disponible</div>
+            <div class="leyenda-item"><div class="box" style="background: #4CAF50;"></div> Seleccionado</div>
+            <div class="leyenda-item"><div class="box" style="background: #222;"></div> Ocupado</div>
+        </div>
+
+        <div class="grid-asientos" id="grid-asientos"></div>
+
+        <div class="resumen-panel">
+            <h3>Asientos seleccionados: <span id="txt-asientos" style="color: #4CAF50;">Ninguno</span></h3>
+            <h3>Total: $<span id="txt-total">0.00</span></h3>
+            <button id="btn-continuar" class="btn-continuar" disabled onclick="pasarAlPago()">Continuar al Pago ➔</button>
+        </div>
+    </div>
+
+    <script>
+        const PRECIO_ENTRADA = 5.00;
+        const funcionId = window.location.pathname.split('/').pop();
+        let asientosSeleccionados = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`/api/funcion/${funcionId}/asientos`);
+                const data = await res.json();
+
+                document.getElementById('titulo-pelicula').textContent = data.funcion.titulo;
+                document.getElementById('info-funcion').textContent = `${data.funcion.sala} | Hora: ${data.funcion.hora_inicio.slice(0,5)}`;
+
+                renderizarAsientos(data.asientosOcupados);
+            } catch (err) {
+                console.error("Error cargando función:", err);
+            }
+        });
+
+        function renderizarAsientos(ocupados) {
+            const grid = document.getElementById('grid-asientos');
+            grid.innerHTML = "";
+            const filas = ['A', 'B', 'C', 'D'];
+            const columnas = 8;
+
+            filas.forEach(fila => {
+                for (let i = 1; i <= columnas; i++) {
+                    const codigo = `${fila}${i}`;
+                    const div = document.createElement('div');
+                    div.className = 'asiento';
+                    div.textContent = codigo;
+
+                    if (ocupados.includes(codigo)) {
+                        div.classList.add('ocupado');
+                    } else {
+                        div.onclick = () => toggleAsiento(div, codigo);
+                    }
+                    grid.appendChild(div);
+                }
+            });
+        }
+
+        function toggleAsiento(elem, codigo) {
+            if (asientosSeleccionados.includes(codigo)) {
+                asientosSeleccionados = asientosSeleccionados.filter(a => a !== codigo);
+                elem.classList.remove('seleccionado');
+            } else {
+                asientosSeleccionados.push(codigo);
+                elem.classList.add('seleccionado');
+            }
+            actualizarResumen();
+        }
+
+        function actualizarResumen() {
+            const txtAsientos = document.getElementById('txt-asientos');
+            const txtTotal = document.getElementById('txt-total');
+            const btn = document.getElementById('btn-continuar');
+
+            if (asientosSeleccionados.length > 0) {
+                txtAsientos.textContent = asientosSeleccionados.join(', ');
+                txtTotal.textContent = (asientosSeleccionados.length * PRECIO_ENTRADA).toFixed(2);
+                btn.disabled = false;
+            } else {
+                txtAsientos.textContent = 'Ninguno';
+                txtTotal.textContent = '0.00';
+                btn.disabled = true;
+            }
+        }
+
+        function pasarAlPago() {
+    sessionStorage.setItem('reserva_funcion_id', funcionId);
+    sessionStorage.setItem('reserva_asientos', JSON.stringify(asientosSeleccionados));
+    sessionStorage.setItem('reserva_total', (asientosSeleccionados.length * PRECIO_ENTRADA).toFixed(2));
+    
+    // Redirige directamente a la pantalla de pago
+    window.location.href = '/pago';
+}
+    </script>
+</body>
+</html>
