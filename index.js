@@ -94,27 +94,51 @@ app.get('/mis-compras.html', (req, res) => {
 });
 
 
+
+
 // 3. RUTAS DE AUTENTICACIÓN (POST)
 
 // LOGUEAR USUARIO
+// LOGUEAR USUARIO CORREGIDO
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    const query = 'SELECT id, nombre, email, rol FROM usuarios WHERE email = ? AND password = ?';
-    conexion.query(query, [email, password], (err, results) => {
+    // 1. Buscamos al usuario SOLO por el email. 
+    // Asegúrate de traer la columna 'password' en el SELECT.
+    const query = 'SELECT id, nombre, email, password, rol FROM usuarios WHERE email = ?';
+    
+    conexion.query(query, [email], async (err, results) => {
         if (err) {
-            console.error(err);
+            console.error("Error en base de datos:", err);
             return res.status(500).send('Error interno en el servidor');
         }
 
+        // Si el usuario existe (el correo es correcto)
         if (results.length > 0) {
             const usuario = results[0];
-            req.session.usuarioId = usuario.id;
-            req.session.nombre = usuario.nombre;
-            req.session.rol = usuario.rol;
 
-            res.redirect('/'); 
+            try {
+                // 2. Comparamos la contraseña plana ingresada con el hash de la BD
+                const contrasenaValida = await bcrypt.compare(password, usuario.password);
+
+                if (contrasenaValida) {
+                    // ¡Todo correcto! Iniciamos la sesión
+                    req.session.usuarioId = usuario.id;
+                    req.session.nombre = usuario.nombre;
+                    req.session.rol = usuario.rol;
+
+                    res.redirect('/'); 
+                } else {
+                    // La contraseña no coincide
+                    res.send('<h3>Correo o contraseña incorrectos.</h3><a href="/login">Volver a intentar</a>');
+                }
+            } catch (compareError) {
+                console.error("Error al comparar contraseñas:", compareError);
+                return res.status(500).send('Error interno de seguridad.');
+            }
+
         } else {
+            // El correo no existe en la BD
             res.send('<h3>Correo o contraseña incorrectos.</h3><a href="/login">Volver a intentar</a>');
         }
     });
