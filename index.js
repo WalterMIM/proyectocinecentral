@@ -93,7 +93,9 @@ app.get('/mis-compras.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'mis-compras.html'));
 });
 
-
+app.get('/recuperar-contrasena', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'recuperar.html'));
+});
 
 
 // 3. RUTAS DE AUTENTICACIÓN (POST)
@@ -641,6 +643,58 @@ app.get('/api/usuario/compras', (req, res) => {
     });
 });
 
+app.post('/api/recuperar-contrasena', async (req, res) => {
+    const { email, nuevaPassword } = req.body;
+
+    if (!email || !nuevaPassword) {
+        return res.status(400).send('<h3>Todos los campos son obligatorios.</h3><a href="/recuperar-contrasena">Volver</a>');
+    }
+
+    try {
+        // 1. Verificamos si el correo existe en la base de datos
+        const queryCheck = 'SELECT id FROM usuarios WHERE email = ?';
+        conexion.query(queryCheck, [email], async (err, results) => {
+            if (err) {
+                console.error("Error al buscar usuario:", err);
+                return res.status(500).send('Error interno en el servidor');
+            }
+
+            if (results.length === 0) {
+                return res.send(`
+                    <div style="text-align:center; font-family:sans-serif; margin-top:50px; background:#141414; color:white;">
+                        <h3 style="color:#e50914;">El correo ingresado no está registrado.</h3>
+                        <a href="/recuperar-contrasena" style="color:#4CAF50;">Intentar de nuevo</a>
+                    </div>
+                `);
+            }
+
+            // 2. Si existe, encriptamos la nueva contraseña con bcrypt
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(nuevaPassword, salt);
+
+            // 3. Actualizamos la contraseña en la base de datos
+            const queryUpdate = 'UPDATE usuarios SET password = ? WHERE email = ?';
+            conexion.query(queryUpdate, [passwordHash, email], (errUpdate) => {
+                if (errUpdate) {
+                    console.error("Error al actualizar la contraseña:", errUpdate);
+                    return res.status(500).send('Error al actualizar la contraseña.');
+                }
+
+                res.send(`
+                    <div style="text-align:center; font-family:sans-serif; margin-top:50px; background:#141414; color:white; padding:30px;">
+                        <h1 style="color:#4CAF50;">¡Contraseña Actualizada con Éxito! 🔑</h1>
+                        <p>Ya puedes iniciar sesión con tu nueva contraseña.</p>
+                        <a href="/login" style="color:#e50914; font-weight:bold; text-decoration:none;">Ir al Login</a>
+                    </div>
+                `);
+            });
+        });
+
+    } catch (error) {
+        console.error("Error general en recuperación:", error);
+        res.status(500).send('Error interno del servidor.');
+    }
+});
 
 // 6. CONTROL DE ARRANQUE DEL SERVIDOR
 const PORT = process.env.PORT || 4000;
