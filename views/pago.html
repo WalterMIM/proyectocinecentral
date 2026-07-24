@@ -11,7 +11,6 @@
         .resumen-linea { display: flex; justify-content: space-between; margin: 15px 0; border-bottom: 1px dashed #333; padding-bottom: 10px; }
         input { width: 100%; padding: 12px; margin-top: 8px; background: #2b2b2b; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
         
-        /* Estilos de la caja de Pago Móvil */
         .pago-movil-box { background: #252525; border: 1px solid #3d3d3d; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: left; }
         .pago-movil-item { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; color: #ccc; border-bottom: 1px solid #2a2a2a; }
         .pago-movil-item:last-of-type { border-bottom: none; margin-bottom: 12px; }
@@ -21,6 +20,7 @@
 
         .btn-pagar { width: 100%; background: #4CAF50; color: white; border: none; padding: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; font-size: 1rem; margin-top: 20px; transition: background 0.2s; }
         .btn-pagar:hover { background: #45a049; }
+        .btn-pagar:disabled { background: #333; color: #777; cursor: not-allowed; }
         #ticket-result { display: none; margin-top: 20px; }
         #qr-code { width: 220px; height: 220px; margin: 15px auto; background: white; padding: 10px; border-radius: 8px; }
     </style>
@@ -34,13 +34,17 @@
             <strong id="asientos-txt" style="color: #e50914;">-</strong>
         </div>
         <div class="resumen-linea">
-            <span>Monto Total:</span>
+            <span>Monto Total (USD):</span>
             <strong id="total-txt" style="color: #4CAF50;">$0.00</strong>
         </div>
+        <div class="resumen-linea">
+            <span>Monto a Pagar (Bs):</span>
+            <strong id="total-bs-txt" style="color: #3b82f6;">Bs. 0,00</strong>
+        </div>
+        <div style="font-size: 0.75rem; color: #888; text-align: right; margin-top: -10px; margin-bottom: 10px;" id="tasa-bcv-info">Tasa BCV: Sincronizando con BD...</div>
 
         <form id="form-pago" onsubmit="procesarTransaccion(event)">
             
-            <!-- CAJA DE DATOS DE PAGO MÓVIL FIJA -->
             <div class="pago-movil-box">
                 <div style="font-weight: bold; color: #e50914; margin-bottom: 8px;">📲 Datos para Pago Móvil</div>
                 <div class="pago-movil-item"><span>Banco:</span> <strong id="pago-banco">Banesco (0134)</strong></div>
@@ -52,11 +56,10 @@
             <label style="display:block; text-align:left; margin-top: 15px; font-size: 0.9rem;">Número de Referencia / Comprobante:</label>
             <input type="text" id="referencia" placeholder="Ej: 98765432" required>
 
-            <button type="submit" class="btn-pagar" id="btn-submit">Confirmar y Generar Entrada</button>
+            <button type="submit" class="btn-pagar" id="btn-submit" disabled>Cargando Tasa...</button>
         </form>
     </div>
 
-    <!-- Ticket de entrada con QR -->
     <div class="pago-card" id="ticket-result">
         <h2 style="color: #4CAF50; margin-bottom: 5px;">¡Entrada Confirmada! 🎉</h2>
         <p style="font-size: 0.9rem; color: #ccc;">Muestra este código QR al entrar a la sala:</p>
@@ -70,30 +73,63 @@
     <script>
         const funcionId = sessionStorage.getItem('reserva_funcion_id');
         const asientos = JSON.parse(sessionStorage.getItem('reserva_asientos') || '[]');
-        const total = sessionStorage.getItem('reserva_total');
+        const totalUSD = parseFloat(sessionStorage.getItem('reserva_total') || 0);
+        let tasaCambioBCV = 0;
+        let totalBolivares = 0;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             if (!asientos.length) {
                 alert("No seleccionaste asientos previamente.");
                 window.location.href = '/cartelera';
                 return;
             }
+            
             document.getElementById('asientos-txt').textContent = asientos.join(', ');
-            document.getElementById('total-txt').textContent = `$${total}`;
+            document.getElementById('total-txt').textContent = `$${totalUSD.toFixed(2)}`;
+
+            await cargarTasaBCV();
         });
 
-        // Función para copiar los datos en bloque
+        async function cargarTasaBCV() {
+            const btnSubmit = document.getElementById('btn-submit');
+            try {
+                const res = await fetch('/api/tasa');
+                if (!res.ok) throw new Error("No se pudo conectar con la API de tasa");
+                const data = await res.json();
+                
+                tasaCambioBCV = parseFloat(data.tasa || data.precio || data.valor);
+
+                if (!tasaCambioBCV || isNaN(tasaCambioBCV)) {
+                    throw new Error("Formato de tasa inválido");
+                }
+
+                totalBolivares = totalUSD * tasaCambioBCV;
+                document.getElementById('total-bs-txt').textContent = `Bs. ${totalBolivares.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('tasa-bcv-info').textContent = `Tasa BCV: Bs. ${tasaCambioBCV.toFixed(2)}`;
+                
+                // Habilitar el botón de pago al tener la tasa real
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = "Confirmar y Generar Entrada";
+
+            } catch (err) {
+                console.error("Error al obtener tasa BCV:", err);
+                document.getElementById('tasa-bcv-info').textContent = "Error al cargar la tasa BCV";
+                alert("No se pudo obtener la tasa de cambio del sistema. Intenta recargar la página.");
+            }
+        }
+
         function copiarDatosPagoMovil() {
             const banco = document.getElementById('pago-banco').textContent;
             const cedula = document.getElementById('pago-cedula').textContent;
             const telefono = document.getElementById('pago-telefono').textContent;
+            const montoBsTexto = document.getElementById('total-bs-txt').textContent;
 
-            const textoCompleto = `Banco: ${banco}\nCédula/RIF: ${cedula}\nTeléfono: ${telefono}`;
+            const textoCompleto = `Banco: ${banco}\nCédula/RIF: ${cedula}\nTeléfono: ${telefono}\nMonto: ${montoBsTexto}`;
 
             navigator.clipboard.writeText(textoCompleto).then(() => {
                 const btn = document.getElementById('btn-copiar-datos');
                 const textoOriginal = btn.textContent;
-                btn.textContent = "✅ ¡Datos Copiados!";
+                btn.textContent = "✅ ¡Datos y Monto Copiados!";
                 btn.style.background = "#4CAF50";
                 btn.style.color = "white";
 
@@ -120,7 +156,9 @@
                     body: JSON.stringify({
                         funcionId: funcionId,
                         asientos: asientos,
-                        total: total,
+                        total: totalUSD,
+                        totalBs: totalBolivares.toFixed(2),
+                        tasaBcv: tasaCambioBCV,
                         metodoPago: 'Pago Móvil',
                         referencia: document.getElementById('referencia').value
                     })
@@ -128,8 +166,8 @@
 
                 const data = await res.json();
 
-                if (data.exito) {
-                    sessionStorage.clear(); // Limpiar la reserva temporal
+                if (res.ok && data.exito) {
+                    sessionStorage.clear();
                     document.getElementById('seccion-pago').style.display = 'none';
                     document.getElementById('qr-code').src = data.qr;
                     document.getElementById('ticket-result').style.display = 'block';

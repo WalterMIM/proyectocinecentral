@@ -8,7 +8,6 @@
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
         <link rel="shortcut icon" href="Images/shortico.png" type="image/x-icon">
         <style>
-            /* ESTILOS DEL MODAL DE PAGO DE CARAMELERÍA */
             .modal-overlay {
                 position: fixed;
                 top: 0; left: 0;
@@ -46,7 +45,7 @@
                 align-items: center;
                 justify-content: center;
                 gap: 15px;
-                margin: 20px 0;
+                margin: 15px 0;
             }
             .btn-qty {
                 background: #333;
@@ -64,12 +63,15 @@
                 background: #262626;
                 padding: 12px;
                 border-radius: 6px;
+                margin-bottom: 12px;
+            }
+            .total-line {
                 display: flex;
                 justify-content: space-between;
-                margin-bottom: 15px;
+                margin-bottom: 5px;
             }
-
-            /* ESTILOS DE LA CAJA DE PAGO MÓVIL */
+            .total-line:last-child { margin-bottom: 0; }
+            
             .pago-movil-box {
                 background: #121212;
                 border: 1px solid #333;
@@ -96,9 +98,7 @@
                 margin-top: 8px;
                 transition: background 0.2s;
             }
-            .btn-copiar:hover {
-                background: #444;
-            }
+            .btn-copiar:hover { background: #444; }
 
             .modal-content input {
                 width: 100%;
@@ -163,10 +163,10 @@
                 <a href="/contacto"><img src="/Images/icons/mail.svg" class="add-icon"></a>
                 </div></li>
 
-                li><div class="contenedor">
-    <a href="/mis-compras.html" class="login-menu-item" id="btn-mis-compras-nav">Mis Compras</a>
-    <a href="/mis-compras.html" class="login-menu-item"><img src="/Images/icons/ticket.svg" class="add-icon"></a>
-</div></li>
+                <li><div class="contenedor">
+                <a href="/mis-compras.html" class="login-menu-item" id="btn-mis-compras-nav">Mis Compras</a>
+                <a href="/mis-compras.html" class="login-menu-item"><img src="/Images/icons/ticket.svg" class="add-icon"></a>
+                </div></li>
                 
                 <li><div class="contenedor">
                 <a href="/login" class="login-menu-item" id="btn-login-nav">Iniciar Sesión</a>
@@ -199,7 +199,6 @@
             <div class="modal-content">
                 <button class="modal-close" onclick="cerrarModal()">&times;</button>
 
-                <!-- PASO 1: SELECCIONAR CANTIDAD Y PAGO -->
                 <div id="paso-formulario">
                     <h3 id="modal-titulo" style="margin-top:0; color: #e50914;">Nombre Combo</h3>
                     <p id="modal-desc" style="color: #aaa; font-size: 0.85rem;">Descripción...</p>
@@ -212,17 +211,23 @@
                     </div>
 
                     <div class="total-box">
-                        <span>Total a pagar:</span>
-                        <strong id="monto-total" style="color: #4CAF50; font-size: 1.1rem;">$0.00</strong>
+                        <div class="total-line">
+                            <span>Total (USD):</span>
+                            <strong id="monto-total" style="color: #4CAF50;">$0.00</strong>
+                        </div>
+                        <div class="total-line">
+                            <span>Total (Bs):</span>
+                            <strong id="monto-total-bs" style="color: #3b82f6;">Bs. 0,00</strong>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #888; text-align: right; margin-top: 4px;" id="tasa-bcv-caramel-info">Tasa BCV: Cargando...</div>
                     </div>
 
-                    <!-- CAJA DE DATOS DE PAGO MÓVIL FIJA -->
                     <div class="pago-movil-box">
                         <div style="font-weight: bold; color: #e50914; margin-bottom: 8px;">📲 Datos para Pago Móvil</div>
-                        <div class="pago-movil-item"><span>Banco:</span> <strong>Banesco (0134)</strong></div>
-                        <div class="pago-movil-item"><span>Cédula / RIF:</span> <strong>J-123456789</strong></div>
-                        <div class="pago-movil-item"><span>Teléfono:</span> <strong>0412-1234567</strong></div>
-                        <button type="button" class="btn-copiar" id="btn-copiar-datos" onclick="copiarDatosPagoMovil()">📋 Copiar Datos</button>
+                        <div class="pago-movil-item"><span>Banco:</span> <strong id="caramel-banco">Banesco (0134)</strong></div>
+                        <div class="pago-movil-item"><span>Cédula / RIF:</span> <strong id="caramel-cedula">J-123456789</strong></div>
+                        <div class="pago-movil-item"><span>Teléfono:</span> <strong id="caramel-telefono">0412-1234567</strong></div>
+                        <button type="button" class="btn-copiar" id="btn-copiar-datos" onclick="copiarDatosPagoMovilCaramel()">📋 Copiar Datos</button>
                     </div>
 
                     <form onsubmit="procesarPagoSnack(event)">
@@ -233,7 +238,6 @@
                     </form>
                 </div>
 
-                <!-- PASO 2: TICKET CON QR -->
                 <div id="paso-qr" style="display: none; text-align: center;">
                     <h3 style="color: #4CAF50; margin-top: 0;">¡Pedido Confirmado! 🎉</h3>
                     <p style="font-size: 0.85rem; color: #ccc;">Muestra este código en el mostrador de caramelería:</p>
@@ -247,17 +251,18 @@
             let comboSeleccionado = null;
             let cantidad = 1;
             let usuarioLogueado = false;
+            let tasaCambioBCV = 36.50; // Valor por defecto de respaldo
 
             document.addEventListener('DOMContentLoaded', async () => {
                 const contenedorCombos = document.getElementById('contenedor-combos');
                 const listaEliminacionAdmin = document.getElementById('lista-eliminacion-admin');
                 let esAdmin = false;
 
-                // 1. Verificar Sesión
+                await obtenerTasaBCV();
+
                 try {
                     const resUser = await fetch('/api/usuario-actual');
                     const dataUser = await resUser.json();
-                    
                     usuarioLogueado = dataUser.logueado;
 
                     const btnLoginNav = document.getElementById('btn-login-nav');
@@ -273,7 +278,6 @@
                     }
                 } catch (err) { console.error(err); }
 
-                // 2. Carga Dinámica de Combos
                 try {
                     const respuesta = await fetch('/api/combos');
                     const combos = await respuesta.json();
@@ -314,7 +318,6 @@
                         `;
                         contenedorCombos.appendChild(article);
 
-                        // PANEL ADMIN DE ELIMINACIÓN
                         if (esAdmin) {
                             const itemBorrar = document.createElement('div');
                             itemBorrar.style.display = 'flex';
@@ -343,7 +346,17 @@
                 }
             });
 
-            // LÓGICA DEL MODAL
+            async function obtenerTasaBCV() {
+                try {
+                    const res = await fetch('/api/tasa');
+                    if (!res.ok) throw new Error("Error en red");
+                    const data = await res.json();
+                    tasaCambioBCV = data.tasa || data.precio || data.valor || 36.50;
+                } catch (e) {
+                    console.warn("Usando tasa por defecto en caramelería");
+                }
+            }
+
             function abrirModalCombo(combo) {
                 if (!usuarioLogueado) {
                     alert("Debes iniciar sesión para realizar compras en la caramelería.");
@@ -371,20 +384,30 @@
                 document.getElementById('modal-titulo').textContent = comboSeleccionado.nombre;
                 document.getElementById('modal-desc').textContent = comboSeleccionado.descripcion;
                 document.getElementById('qty-count').textContent = cantidad;
-                const total = (parseFloat(comboSeleccionado.precio) * cantidad).toFixed(2);
-                document.getElementById('monto-total').textContent = `$${total}`;
+                
+                const totalUSD = (parseFloat(comboSeleccionado.precio) * cantidad);
+                const totalBs = totalUSD * tasaCambioBCV;
+
+                document.getElementById('monto-total').textContent = `$${totalUSD.toFixed(2)}`;
+                document.getElementById('monto-total-bs').textContent = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('tasa-bcv-caramel-info').textContent = `Tasa BCV: Bs. ${tasaCambioBCV.toFixed(2)}`;
             }
 
             function cerrarModal() {
                 document.getElementById('modal-snack').style.display = 'none';
             }
 
-            // COPIAR DATOS DE PAGO MÓVIL AL PORTAPAPELES
-            function copiarDatosPagoMovil() {
-                const textoCopiar = "Banco: Banesco (0134)\nRIF: J-123456789\nTeléfono: 0412-1234567";
+            function copiarDatosPagoMovilCaramel() {
+                const banco = document.getElementById('caramel-banco').textContent;
+                const cedula = document.getElementById('caramel-cedula').textContent;
+                const telefono = document.getElementById('caramel-telefono').textContent;
+                const montoBs = document.getElementById('monto-total-bs').textContent;
+
+                const textoCopiar = `Banco: ${banco}\nRIF: ${cedula}\nTeléfono: ${telefono}\nMonto: ${montoBs}`;
+                
                 navigator.clipboard.writeText(textoCopiar).then(() => {
                     const btn = document.getElementById('btn-copiar-datos');
-                    btn.textContent = "✅ ¡Copiado!";
+                    btn.textContent = "✅ ¡Copiado con Monto!";
                     setTimeout(() => {
                         btn.textContent = "📋 Copiar Datos";
                     }, 2000);
@@ -393,14 +416,14 @@
                 });
             }
 
-            // ENVIAR PAGO Y GENERAR QR
             async function procesarPagoSnack(e) {
                 e.preventDefault();
                 const btn = document.getElementById('btn-submit-snack');
                 btn.disabled = true;
                 btn.textContent = "Procesando...";
 
-                const total = (parseFloat(comboSeleccionado.precio) * cantidad).toFixed(2);
+                const totalUSD = (parseFloat(comboSeleccionado.precio) * cantidad).toFixed(2);
+                const totalBs = (totalUSD * tasaCambioBCV).toFixed(2);
 
                 try {
                     const res = await fetch('/api/procesar-pago-carameleria', {
@@ -410,7 +433,9 @@
                             comboId: comboSeleccionado.id,
                             comboNombre: comboSeleccionado.nombre,
                             cantidad: cantidad,
-                            total: total,
+                            total: totalUSD,
+                            totalBs: totalBs,
+                            tasaBcv: tasaCambioBCV,
                             metodoPago: 'pago_movil',
                             referencia: document.getElementById('snack-referencia').value
                         })
@@ -427,7 +452,7 @@
                     }
                 } catch (err) {
                     console.error("Error procesando snack:", err);
-                    alert("No se pudo conectar con la API. Revisa la consola del navegador y la terminal de Node.js.");
+                    alert("No se pudo conectar con la API.");
                 } finally {
                     btn.disabled = false;
                     btn.textContent = "Confirmar";

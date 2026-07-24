@@ -696,6 +696,62 @@ app.post('/api/recuperar-contrasena', async (req, res) => {
     }
 });
 
+// API GET: Consultar la tasa de cambio actual
+app.get('/api/tasa-cambio', (req, res) => {
+    conexion.query('SELECT valor FROM configuracion WHERE clave = ?', ['tasa_cambio'], (err, results) => {
+        if (err || results.length === 0) {
+            return res.json({ tasa: 1.00 }); // Valor por defecto de respaldo
+        }
+        res.json({ tasa: parseFloat(results[0].valor) });
+    });
+});
+
+// --- RUTA PARA OBTENER LOS COMBOS DE LA CARAMELERÍA ---
+app.get('/api/combos', (req, res) => {
+    const query = 'SELECT id, nombre, descripcion, precio, imagen, stock FROM combos';
+    conexion.query(query, (err, results) => {
+        if (err) {
+            console.error("Error al obtener los combos:", err);
+            return res.status(500).json({ error: "Error en el servidor al obtener combos" });
+        }
+        res.json(results);
+    });
+});
+
+// --- RUTA PARA OBTENER LA TASA BCV ACTUAL ---
+app.get('/api/tasa', (req, res) => {
+    const query = 'SELECT valor FROM configuracion WHERE clave = ?';
+    conexion.query(query, ['tasa_cambio'], (err, results) => {
+        if (err) {
+            console.error("Error al obtener la tasa:", err);
+            return res.status(500).json({ error: "Error en el servidor" });
+        }
+        if (results.length > 0) {
+            res.json({ tasa: parseFloat(results[0].valor) });
+        } else {
+            res.json({ tasa: 36.50 }); // Valor por defecto si no existe en la BD
+        }
+    });
+});
+
+// --- RUTA PARA ACTUALIZAR LA TASA DE CAMBIO (ADMIN) ---
+app.post('/api/admin/actualizar-tasa', verificarAdmin, (req, res) => {
+    const { tasa } = req.body;
+    
+    if (!tasa || isNaN(tasa)) {
+        return res.status(400).send('Tasa inválida');
+    }
+
+    const query = 'UPDATE configuracion SET valor = ? WHERE clave = ?';
+    conexion.query(query, [tasa, 'tasa_cambio'], (err) => {
+        if (err) {
+            console.error("Error al actualizar tasa:", err);
+            return res.status(500).send('Error al actualizar la tasa');
+        }
+        res.redirect('/admin');
+    });
+});
+
 // 6. CONTROL DE ARRANQUE DEL SERVIDOR
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
