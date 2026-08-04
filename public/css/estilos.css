@@ -47,29 +47,33 @@ body {
     display: block;
     padding: 10px;
     border-radius: 5px;
-	align-content:center;
+    align-content:center;
 }
-
 
 .nav-links div:hover, .nav-links div.active{
-	color:white;
-	background-color:var(--rojo);
+    color:white;
+    background-color:var(--rojo);
 }
+
 .nav-links div:hover img, .nav-links div.active img{
-	filter:invert(9%) sepia(88%) saturate(3826%) hue-rotate(355deg) brightness(118%) contrast(118%);
+    filter:invert(9%) sepia(88%) saturate(3826%) hue-rotate(355deg) brightness(118%) contrast(118%);
 }
+
 .contenedor{
-display:flex;
-justify-content: space-between;
-border-radius: 8px;
-align-items: center
+    display:flex;
+    justify-content: space-between;
+    border-radius: 8px;
+    align-items: center
 }
+
 .contenedor:hover a{
-color:white;
+    color:white;
 }
+
 .contenedor:hover a img{
-filter:invert(1);
+    filter:invert(1);
 }
+
 .main-content {
     margin-left: var(--sidebar-width);
     width: calc(100% - var(--sidebar-width));
@@ -134,6 +138,7 @@ filter:invert(1);
     background: var(--rojo); font-size: 10px; font-weight: bold;
     padding: 5px 10px; border-radius: 3px;
 }
+
 .movies-grid-2{
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -147,20 +152,21 @@ filter:invert(1);
 
 @media (max-width: 900px) {
     .menu-toggle {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    position: fixed;
-    top: 25px;
-    left: 20px;
-    z-index: 3000;
-    cursor: pointer;
-    background: var(--rojo);
-    padding: 10px;
-    border-radius: 5px;
-    z-index: 9999 !important;
-    pointer-events: auto !important;
-}
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        position: fixed;
+        top: 25px;
+        left: 20px;
+        z-index: 3000;
+        cursor: pointer;
+        background: var(--rojo);
+        padding: 10px;
+        border-radius: 5px;
+        z-index: 9999 !important;
+        pointer-events: auto !important;
+    }
+
     .menu-toggle span {
         width: 25px;
         height: 3px;
@@ -169,33 +175,34 @@ filter:invert(1);
     }
 
     .sidebar {
-    width: var(--sidebar-width);
-    height: 100vh;
-    background-color: var(--negro-puro);
-    position: fixed;
-    left: -240px; 
-    border-right: 1px solid #333;
-    display: flex;
-    flex-direction: column;
-    padding: 30px 20px;
-    z-index: 1500;
-    transition: 0.4s;
-}
+        width: var(--sidebar-width);
+        height: 100vh;
+        background-color: var(--negro-puro);
+        position: fixed;
+        left: -240px; 
+        border-right: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+        padding: 30px 20px;
+        z-index: 1500;
+        transition: 0.4s;
+    }
 
-.sidebar.active {
-    left: 0; 
-}
+    .sidebar.active {
+        left: 0; 
+    }
 
-.main-content {
-    margin-left: 0; 
-    width: 100%;
-    padding: 40px;
-}
+    .main-content {
+        margin-left: 0; 
+        width: 100%;
+        padding: 40px;
+    }
 
     .sidebar-header h1 {
         margin-top: 40px;
     }
 }
+
 /* --- SECCIÓN DE CARAMELERÍA --- */
 .candy-grid {
     display: grid;
@@ -292,11 +299,7 @@ filter:invert(1);
     background-color: #b0070f;
 }
 
-
-
 /* --- SECCIÓN DE LOGIN --- */
-
-
 .login-body {
     background-color: var(--negro-suave, #121212);
     font-family: 'Poppins', sans-serif;
@@ -310,7 +313,6 @@ filter:invert(1);
     box-sizing: border-box;
 }
 
-/* Tarjeta contenedora del formulario */
 .login-container {
     background-color: #1a1a1a;
     padding: 40px;
@@ -342,7 +344,6 @@ filter:invert(1);
     font-size: 0.9rem;
 }
 
-/* Grupos de inputs */
 .form-group {
     margin-bottom: 20px;
     display: flex;
@@ -367,14 +368,12 @@ filter:invert(1);
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-/* Efecto cuando el usuario hace clic para escribir */
 .form-group input:focus {
     outline: none;
     border-color: #e50914;
     box-shadow: 0 0 8px rgba(225, 9, 20, 0.3);
 }
 
-/* Botón de Iniciar Sesión */
 .btn-login {
     background-color: #e50914;
     color: white;
@@ -396,11 +395,11 @@ filter:invert(1);
 .btn-login:active {
     transform: scale(0.98);
 }
+
 .add-icon:hover{
-filter: invert(1);
+    filter: invert(1);
 }
 
-/* Enlaces del pie de la tarjeta */
 .login-footer {
     text-align: center;
     margin-top: 25px;
@@ -461,10 +460,6 @@ filter: invert(1);
     font-size: 0.95rem;
 }
 
-
-
-
-
 .recovery-notice {
     background-color: rgba(225, 9, 20, 0.1);
     border-left: 4px solid var(--rojo);
@@ -475,12 +470,9 @@ filter: invert(1);
     margin-bottom: 20px;
 }
 
-
 .btn-recovery {
     background-color: var(--rojo);
-    
 }
-
 
 .card {
     background: #1f1f1f;
@@ -565,4 +557,272 @@ filter: invert(1);
 
 .back a:hover {
     color: white;
+}
+
+/* ==========================================
+   NUEVOS ESTILOS: PANEL DE ADMINISTRACIÓN
+   ========================================== */
+.container, 
+.admin-section {
+    max-width: 600px;
+    margin: 0 auto 40px auto;
+    background: var(--gris-card);
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    border: 1px solid #2a2a2a;
+}
+
+.container h2, 
+.admin-section h2 {
+    color: var(--rojo);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.container label, 
+.admin-section label {
+    display: block;
+    margin: 12px 0 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ddd;
+}
+
+.container input[type="text"],
+.container input[type="number"],
+.container input[type="file"],
+.container select,
+.container textarea,
+.admin-section input,
+.admin-section select,
+.admin-section textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background: #2b2b2b;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.container button[type="submit"],
+.btn-submit {
+    width: 100%;
+    padding: 12px;
+    background: var(--rojo);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    transition: background 0.3s;
+    margin-top: 15px;
+}
+
+.container button[type="submit"]:hover,
+.btn-submit:hover {
+    background: #b80710;
+}
+
+.admin-card {
+    background: var(--gris-card);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 0 auto 20px auto;
+    max-width: 900px;
+    border: 1px solid #2a2a2a;
+}
+
+.admin-card h3 {
+    color: var(--rojo);
+    margin-bottom: 15px;
+}
+
+.form-tasa {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.label-tasa {
+    font-size: 0.9rem;
+    margin: 0;
+    color: #ddd;
+}
+
+.input-tasa {
+    padding: 8px 12px;
+    background: #2b2b2b;
+    border: 1px solid #444;
+    color: white;
+    border-radius: 5px;
+    width: 130px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-tasa {
+    background: #2e7d32;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-tasa:hover {
+    background: #1b5e20;
+}
+
+.volver-container {
+    margin: 0 auto 20px auto;
+    max-width: 900px;
+}
+
+.btn-volver {
+    display: inline-block;
+    background-color: #2b2b2b;
+    color: white;
+    padding: 10px 18px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 500;
+    transition: background 0.3s;
+}
+
+.btn-volver:hover {
+    background-color: #444;
+}
+
+.divider-line {
+    border: 0;
+    border-top: 1px solid #333;
+    margin: 40px auto;
+    max-width: 900px;
+}
+
+.gestion-estados-section {
+    max-width: 900px;
+    margin: 0 auto 40px auto;
+}
+
+.tabla-gestion {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: var(--gris-card);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #2a2a2a;
+}
+
+.tabla-gestion th, 
+.tabla-gestion td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+.tabla-gestion th {
+    background-color: var(--rojo);
+    color: white;
+    font-weight: 600;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.75rem;
+    display: inline-block;
+}
+
+.badge.cartelera { background-color: #2e7d32; color: white; }
+.badge.estreno { background-color: #ef6c00; color: white; }
+.badge.almacen { background-color: #455a64; color: white; }
+
+.select-gestion {
+    background-color: #2b2b2b;
+    color: white;
+    border: 1px solid #444;
+    padding: 8px;
+    border-radius: 5px;
+    margin-bottom: 0;
+    width: auto;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-aplicar-estado {
+    background-color: var(--rojo);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    width: auto;
+    transition: background 0.3s;
+}
+
+.btn-aplicar-estado:hover {
+    background-color: #b80710;
+}
+
+.form-tabla-estado {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin: 0;
+}
+
+.txt-muted-center {
+    color: #aaa;
+    text-align: center;
+}
+
+.txt-error-center {
+    color: var(--rojo);
+    text-align: center;
+}
+
+.sala-select-hidden {
+    display: none;
+}
+
+/* ==========================================
+   CORRECCIÓN DE DISPOSICIÓN VERTICAL ADMIN
+   ========================================== */
+body.admin-page {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 30px 20px;
+    width: 100%;
+}
+
+body.admin-page .admin-card,
+body.admin-page .volver-container,
+body.admin-page .container,
+body.admin-page .gestion-estados-section,
+body.admin-page .admin-section {
+    width: 100%;
+    max-width: 800px; 
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 30px;
+}
+
+body.admin-page .divider-line {
+    width: 100%;
+    max-width: 800px;
+    margin: 20px auto 40px auto;
 }

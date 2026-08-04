@@ -1,17 +1,14 @@
 const express = require('express');
 const path = require('path');
 const session = require('express-session'); // Para las sesiones
-const conexion = require('./conexion'); // Importa tu archivo de conexión
+const conexion = require('./conexion'); // Importa archivo de conexión
 const app = express();
 const bcrypt = require('bcryptjs');
 const multer = require('multer'); // Gestor de subida de archivos
 const QRCode = require('qrcode');
-
-// ⚙️ CONSTANTE OPERACIONAL DEL MOTOR DE HORARIOS
-// Define el tiempo de holgura obligatorio entre funciones para la limpieza de la sala
 const MINUTOS_LIMPIEZA = 20; 
 
-// 🔒 MIDDLEWARE DE SEGURIDAD CORREGIDO
+// ADMIN
 // Bloquea o permite el paso a rutas administrativas validando el rol en la sesión activa
 function verificarAdmin(req, res, next) {
     if (req.session && req.session.rol === 'admin') {
@@ -98,15 +95,13 @@ app.get('/recuperar-contrasena', (req, res) => {
 });
 
 
-// 3. RUTAS DE AUTENTICACIÓN (POST)
-
+// 3. RUTAS DE AUTENTICACIÓN
+// LOGIN Y ADMIN
 // LOGUEAR USUARIO
-// LOGUEAR USUARIO CORREGIDO
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    // 1. Buscamos al usuario SOLO por el email. 
-    // Asegúrate de traer la columna 'password' en el SELECT.
+    // 1. Buscar usuario solo por el email. 
     const query = 'SELECT id, nombre, email, password, rol FROM usuarios WHERE email = ?';
     
     conexion.query(query, [email], async (err, results) => {
@@ -115,12 +110,12 @@ app.post('/login', (req, res) => {
             return res.status(500).send('Error interno en el servidor');
         }
 
-        // Si el usuario existe (el correo es correcto)
+        // Si el usuario existe el correo es correcto
         if (results.length > 0) {
             const usuario = results[0];
 
             try {
-                // 2. Comparamos la contraseña plana ingresada con el hash de la BD
+                // 2. Compara la contraseña plana ingresada con el hash de la BD
                 const contrasenaValida = await bcrypt.compare(password, usuario.password);
 
                 if (contrasenaValida) {
@@ -131,7 +126,7 @@ app.post('/login', (req, res) => {
 
                     res.redirect('/'); 
                 } else {
-                    // La contraseña no coincide
+                    // contraseña erronea
                     res.send('<h3>Correo o contraseña incorrectos.</h3><a href="/login">Volver a intentar</a>');
                 }
             } catch (compareError) {
@@ -190,7 +185,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-
+//ADMIN
 // 4. MÓDULO DE ADMINISTRACIÓN
 
 app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada'), (req, res) => {
@@ -252,7 +247,7 @@ app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada')
                 
                 res.send(`
                     <div style="text-align: center; font-family: sans-serif; margin-top: 50px; color: white; background: #141414; padding: 20px;">
-                        <h1 style="color: #4CAF50;">¡Película y Funciones creadas! 🎬</h1>
+                        <h1 style="color: #4CAF50;">¡Película y Funciones creadas! </h1>
                         <p>Se calcularon automáticamente ${funcionesACrear.length} funciones.</p>
                         <a href="/admin" style="color: #e50914; font-weight: bold; text-decoration: none;">Volver al panel</a>
                     </div>
@@ -502,7 +497,7 @@ app.get('/pago', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'pago.html'));
 });
 
-// API POST: Procesar Pago y Guardar QR de Texto e Información de la Entrada
+
 // API POST: Procesar Pago y Guardar QR de Texto e Información de la Entrada
 app.post('/api/procesar-pago', async (req, res) => {
     if (!req.session || !req.session.usuarioId) {
@@ -610,7 +605,7 @@ app.post('/api/procesar-pago-carameleria', async (req, res) => {
     }
 });
 
-// API GET: Consultar las compras del usuario logueado para la vista "Mis Compras"
+// API GET: Consultar las compras del usuario logueado para la vista Mis Compras
 app.get('/api/usuario/compras', (req, res) => {
     if (!req.session || !req.session.usuarioId) {
         return res.status(401).json({ error: 'No autorizado' });
@@ -643,6 +638,7 @@ app.get('/api/usuario/compras', (req, res) => {
     });
 });
 
+//recuperar
 app.post('/api/recuperar-contrasena', async (req, res) => {
     const { email, nuevaPassword } = req.body;
 
@@ -734,7 +730,8 @@ app.get('/api/tasa', (req, res) => {
     });
 });
 
-// --- RUTA PARA ACTUALIZAR LA TASA DE CAMBIO (ADMIN) ---
+//ADMIN
+// --- RUTA PARA ACTUALIZAR LA TASA DE CAMBIO ADMIN ---
 app.post('/api/admin/actualizar-tasa', verificarAdmin, (req, res) => {
     const { tasa } = req.body;
     
