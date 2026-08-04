@@ -9,14 +9,14 @@ const QRCode = require('qrcode');
 const MINUTOS_LIMPIEZA = 20; 
 
 // ADMIN
-// Bloquea o permite el paso a rutas administrativas validando el rol en la sesión activa
+// Bloqueo del paso a rutas administrativas
 function verificarAdmin(req, res, next) {
     if (req.session && req.session.rol === 'admin') {
-        return next(); // ¡Autorizado! Continúa
+        return next(); 
     } else {
         return res.status(403).send(`
             <div style="text-align:center; font-family:sans-serif; margin-top:50px; background:#141414; color:white; padding:30px;">
-                <h1 style="color:#e50914;">🚫 Acceso Denegado</h1>
+                <h1 style="color:#e50914;">Acceso Denegado</h1>
                 <p>No tienes permisos de administrador para ver o modificar este panel.</p>
                 <a href="/login" style="color:#4CAF50; font-weight:bold; text-decoration:none;">Iniciar Sesión como Admin</a>
             </div>
@@ -24,7 +24,7 @@ function verificarAdmin(req, res, next) {
     }
 }
 
-// ⚙️ CONFIGURACIÓN DE ALMACENAMIENTO DE PORTADAS (MULTER)
+//CONFIGURACIÓN DE ALMACENAMIENTO DE PORTADAS
 // Define la carpeta de destino y renombra los archivos subidos para evitar duplicados usando timestamps
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 1. CONFIGURACIONES GENERALES DE EXPRESS
+//CONFIGURACIONES GENERALES DE EXPRESS
 // Middleware para servir archivos estáticos y procesar datos entrantes en formato URL-encoded y JSON
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
@@ -51,7 +51,7 @@ app.use(session({
     cookie: { secure: false } 
 }));
 
-// 2. RUTAS DE NAVEGACIÓN VISUAL (GET CLEAN URLS)
+// RUTAS DE NAVEGACIÓN VISUAL 
 // Despacho de archivos HTML estáticos para la interfaz de usuario
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
@@ -101,7 +101,7 @@ app.get('/recuperar-contrasena', (req, res) => {
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    // 1. Buscar usuario solo por el email. 
+    // Buscar usuario solo por el email. 
     const query = 'SELECT id, nombre, email, password, rol FROM usuarios WHERE email = ?';
     
     conexion.query(query, [email], async (err, results) => {
@@ -119,7 +119,7 @@ app.post('/login', (req, res) => {
                 const contrasenaValida = await bcrypt.compare(password, usuario.password);
 
                 if (contrasenaValida) {
-                    // ¡Todo correcto! Iniciamos la sesión
+                    // Iniciamos la sesión
                     req.session.usuarioId = usuario.id;
                     req.session.nombre = usuario.nombre;
                     req.session.rol = usuario.rol;
@@ -186,7 +186,7 @@ app.post('/register', async (req, res) => {
 });
 
 //ADMIN
-// 4. MÓDULO DE ADMINISTRACIÓN
+//MÓDULO DE ADMINISTRACIÓN
 
 app.post('/api/admin/agregar-pelicula', verificarAdmin, upload.single('portada'), (req, res) => {
     if (!req.file) return res.status(400).send('Debes seleccionar una imagen.');
@@ -647,7 +647,7 @@ app.post('/api/recuperar-contrasena', async (req, res) => {
     }
 
     try {
-        // 1. Verificamos si el correo existe en la base de datos
+        // Verificamos si el correo existe en la base de datos
         const queryCheck = 'SELECT id FROM usuarios WHERE email = ?';
         conexion.query(queryCheck, [email], async (err, results) => {
             if (err) {
@@ -664,11 +664,11 @@ app.post('/api/recuperar-contrasena', async (req, res) => {
                 `);
             }
 
-            // 2. Si existe, encriptamos la nueva contraseña con bcrypt
+            //  Si existe, encriptamos la nueva contraseña con bcrypt
             const salt = await bcrypt.genSalt(10);
             const passwordHash = await bcrypt.hash(nuevaPassword, salt);
 
-            // 3. Actualizamos la contraseña en la base de datos
+            // Actualizamos la contraseña en la base de datos
             const queryUpdate = 'UPDATE usuarios SET password = ? WHERE email = ?';
             conexion.query(queryUpdate, [passwordHash, email], (errUpdate) => {
                 if (errUpdate) {
@@ -731,7 +731,7 @@ app.get('/api/tasa', (req, res) => {
 });
 
 //ADMIN
-// --- RUTA PARA ACTUALIZAR LA TASA DE CAMBIO ADMIN ---
+//  RUTA PARA ACTUALIZAR LA TASA DE CAMBIO ADMIN
 app.post('/api/admin/actualizar-tasa', verificarAdmin, (req, res) => {
     const { tasa } = req.body;
     
@@ -749,7 +749,7 @@ app.post('/api/admin/actualizar-tasa', verificarAdmin, (req, res) => {
     });
 });
 
-// 6. CONTROL DE ARRANQUE DEL SERVIDOR
+// CONTROL DE ARRANQUE DEL SERVIDOR
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto: ${PORT}`);

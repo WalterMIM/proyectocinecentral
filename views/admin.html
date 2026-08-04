@@ -9,9 +9,9 @@
 <body class="admin-page">
 
     <div class="admin-card" style="background: #1f1f1f; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-    <h3 style="color: #e50914; margin-top: 0;"> Tasa de Cambio (Moneda Local)</h3>
+    <h3 style="color: #e50914; margin-top: 0;"> Tasa de cambio en bs</h3>
     <form action="/api/admin/actualizar-tasa" method="POST" style="display: flex; gap: 10px; align-items: center;">
-        <label for="tasa" style="font-size: 0.9rem;">Multiplicador por 1 USD:</label>
+        <label for="tasa" style="font-size: 0.9rem;">Multiplicador por 1 dolar</label>
         <input type="number" step="0.01" id="tasa" name="tasa" required placeholder="Ej: 40.50" style="padding: 8px; background: #333; border: 1px solid #444; color: white; border-radius: 4px; width: 120px;">
         <button type="submit" style="background: #4CAF50; color: white; border: none; padding: 9px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">Guardar Tasa</button>
     </form>
@@ -43,14 +43,14 @@
 
             <label>Estado Inicial de la Película:</label>
             <select name="estado" id="estado_select" required onchange="controlarSelectorSala()">
-                <option value="cartelera">En Cartelera (Sala Activa)</option>
-                <option value="estreno">Próximo Estreno (Sin Sala)</option>
+                <option value="cartelera">En Cartelera</option>
+                <option value="estreno">Próximo Estreno</option>
             </select>
 
             <label>Sinopsis:</label>
             <textarea name="sinopsis" rows="4" placeholder="Breve descripción..."></textarea>
 
-            <button type="submit">Calcular Funciones y Guardar</button>
+            <button type="submit">Calcular funciones y guardar</button>
         </form>
     </div>
 
@@ -60,8 +60,8 @@
 
     <section class="gestion-estados-section">
         <div class="section-header">
-            <h2> Gestión del Ciclo de Vida de las Películas</h2>
-            <p style="color: #aaa; margin-bottom: 20px;">Promueve películas a cartelera, muévelas a estrenos o escóndelas en el almacén.</p>
+            <h2> Gestión de películas</h2>
+            <p style="color: #aaa; margin-bottom: 20px;">coloca películas en cartelera, muevelas a estrenos o en el almacén.</p>
         </div>
 
         <table class="tabla-gestion">
@@ -114,7 +114,7 @@
 </section>
 
     <script>
-        // 1. Deshabilitar selector de sala si se escoge "Próximo Estreno" al crear
+        //Deshabilitar selector de sala para los estrenos
         function controlarSelectorSala() {
             const estado = document.getElementById('estado_select').value;
             const selectSalas = document.getElementById('sala_select');
@@ -129,7 +129,7 @@
             }
         }
 
-        // 2. Mostrar u ocultar el sub-selector de salas dentro de la tabla de gestión inferior
+        // Mostrar u ocultar el selector de salas 
         window.controlarSubSelectorSala = function(elementoSelect) {
             const selectorSala = elementoSelect.nextElementSibling;
             if (elementoSelect.value === 'cartelera') {
@@ -142,18 +142,18 @@
             }
         }
 
-        // 3. Procesos Asíncronos al Cargar el DOM
+        // Procesos Asíncronos al Cargar el DOM
         document.addEventListener("DOMContentLoaded", async () => {
             const selectSalasForm = document.getElementById("sala_select");
             const tbodyGestion = document.getElementById("lista-peliculas-gestion");
 
-            // --- CARGAR SALAS EN EL FORMULARIO SUPERIOR ---
+            
             try {
                 const respuestaSalas = await fetch('/api/salas');
                 const salas = await respuestaSalas.json();
 
                 if (salas.length === 0) {
-                    selectSalasForm.innerHTML = '<option value="">❌ No hay salas en la BD</option>';
+                    selectSalasForm.innerHTML = '<option value="">No hay salas en la BD</option>';
                 } else {
                     selectSalasForm.innerHTML = "";
                     salas.forEach(sala => {
@@ -164,7 +164,7 @@
                     });
                 }
                 
-                // --- CARGAR TABLA DE GESTIÓN INFERIOR ---
+                
                 let opcionesSalasTabla = salas.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
                 
                 const respuestaPelis = await fetch('/api/admin/todas-las-peliculas');
